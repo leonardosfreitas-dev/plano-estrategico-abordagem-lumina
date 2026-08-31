@@ -1677,79 +1677,26 @@
     <div id="drawer-backdrop" onclick="toggleCopilotDrawer()" class="absolute inset-0 bg-slate-900/60 backdrop-blur-xs opacity-0 transition-opacity duration-300 pointer-events-auto hidden"></div>
     
     <div id="drawer-panel" class="absolute right-0 top-0 bottom-0 max-w-md w-full bg-white shadow-2xl border-l border-slate-200 flex flex-col transform translate-x-full transition-transform duration-300 pointer-events-auto">
-      <!-- Drawer Header -->
+      <!-- Drawer Header (Limpo: Apenas Título, Status e Botão Fechar) -->
       <div class="bg-gradient-to-r from-slate-900 to-teal-950 text-white p-4.5 flex justify-between items-center border-b border-slate-800">
         <div class="flex items-center gap-2.5">
           <div class="w-8 h-8 rounded-lg bg-teal-500/20 text-teal-300 border border-teal-500/40 flex items-center justify-center text-sm">
             <i class="fa-solid fa-wand-magic-sparkles"></i>
           </div>
           <div>
-            <h3 class="font-bold text-sm">Copilot Estratégico IA (Dual-Core)</h3>
-            <p id="copilot-mode-badge" class="text-[11px] text-teal-300 font-mono">Modo: Motor Local ACF (0ms)</p>
+            <h3 class="font-bold text-sm">Copilot Estratégico IA</h3>
+            <p id="copilot-mode-badge" class="text-[11px] text-emerald-300 font-mono flex items-center gap-1">
+              <i class="fa-solid fa-circle text-[7px] text-emerald-400 animate-pulse"></i> Modo: Inteligência em Tempo Real
+            </p>
           </div>
         </div>
-        <div class="flex items-center gap-2">
-          <button onclick="toggleApiSettings()" title="Configurar Conexão Gemini Live & Sincronização ACF" class="text-slate-400 hover:text-teal-300 p-1 text-sm">
-            <i class="fa-solid fa-gear"></i>
-          </button>
-          <button onclick="toggleCopilotDrawer()" class="text-slate-400 hover:text-white p-1 text-lg">
+        <div>
+          <button onclick="toggleCopilotDrawer()" class="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition text-lg" title="Fechar">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
       </div>
-
-      <!-- Settings Panel (BYOK Gemini Live API + Google Docs Sync URL + Input Direto) -->
-      <div id="api-settings-panel" class="hidden p-3.5 bg-slate-100 border-b border-slate-200 text-xs space-y-3">
-        <div class="font-bold text-slate-800 flex justify-between items-center">
-          <span>Configuração Gemini Live & Protocolo ACF:</span>
-          <span class="text-[10px] text-teal-700 bg-teal-100 px-2 py-0.5 rounded font-mono">Governança SOTA</span>
-        </div>
-        
-        <!-- Chave API Gemini -->
-        <div>
-          <label class="font-semibold text-slate-700 text-[11px] block mb-1">1. Chave Gemini API (Google AI Studio):</label>
-          <div class="flex gap-1.5">
-            <input type="password" id="gemini-api-key-input" placeholder="Cole sua chave AI Studio (AIzaSy...)" 
-                   class="flex-1 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white font-mono text-[11px] focus:ring-2 focus:ring-teal-500">
-            <button onclick="saveApiKey()" class="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg text-xs shadow-xs">Salvar</button>
-            <button onclick="testGeminiApiConnection()" class="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs shadow-xs" title="Testar chamada real online"><i class="fa-solid fa-bolt"></i> Testar</button>
-            <button onclick="clearApiKey()" class="px-2 py-1.5 bg-slate-300 hover:bg-slate-400 text-slate-700 rounded-lg text-xs" title="Limpar chave"><i class="fa-solid fa-trash"></i></button>
-          </div>
-          <div id="api-test-status" class="mt-1.5 text-[11px] font-mono hidden"></div>
-        </div>
-
-        <!-- Sincronização do Kernel ACF -->
-        <div class="space-y-1.5 pt-1 border-t border-slate-200">
-          <div class="flex justify-between items-center">
-            <label class="font-semibold text-slate-700 text-[11px]">2. Protocolo de Governança ACF:</label>
-            <button onclick="toggleManualKernelInput()" class="text-[10px] text-indigo-700 hover:underline font-bold">
-              <i class="fa-solid fa-pen-to-square mr-0.5"></i> Alternar p/ Colar Texto Direto
-            </button>
-          </div>
-
-          <!-- Opção A: Link Google Drive com Proxy Anti-CORS -->
-          <div id="kernel-url-box" class="flex gap-1.5">
-            <input type="text" id="acf-sync-url-input" placeholder="Cole o link de compartilhamento do Google Docs..." 
-                   class="flex-1 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white font-mono text-[10px]">
-            <button onclick="syncAcfKernelFromUrl()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs whitespace-nowrap shadow-xs">
-              <i class="fa-solid fa-rotate mr-1"></i> Sync Drive
-            </button>
-          </div>
-
-          <!-- Opção B: Colar Texto Manual Direto (Imune a qualquer erro de rede/CORS) -->
-          <div id="kernel-manual-box" class="hidden space-y-1.5">
-            <textarea id="acf-manual-text-input" rows="3" placeholder="Cole aqui o texto do seu protocolo ACF..." 
-                      class="w-full p-2 rounded-lg border border-slate-300 bg-white font-mono text-[10px]"></textarea>
-            <div class="flex justify-end gap-1.5">
-              <button onclick="saveManualKernelText()" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs">
-                <i class="fa-solid fa-floppy-disk mr-1"></i> Salvar Protocolo Local
-              </button>
-            </div>
-          </div>
-          <p class="text-[10px] text-slate-500">O documento do Drive deve estar compartilhado como "Qualquer pessoa com o link".</p>
-        </div>
-      </div>
-
+      
       <!-- Drawer Body (Conversation / Explanations) -->
       <div id="copilot-messages" class="flex-1 p-4 overflow-y-auto space-y-3.5 text-xs sm:text-sm">
         <div class="bg-teal-50 p-3.5 rounded-xl border border-teal-200 text-teal-950 space-y-1.5">
@@ -4454,62 +4401,51 @@ function sendCopilotCustomQuery() {
   handleCopilotQuery(query);
 }
 
-async function handleCopilotQuery(userQuery) {
-  const container = document.getElementById('copilot-messages');
-  if (!container) return;
+/**
+ * Higienizador e Formatador Tipográfico SOTA:
+ * Converte marcações de Markdown bruto em HTML nativo estilizado,
+ * elimina asteriscos soltos e remove tags de log ou caixas quebradas.
+ */
+function formatAiResponse(text) {
+  if (!text) return '';
   
-  const userMsg = document.createElement('div');
-  userMsg.className = "bg-slate-900 text-white p-3 rounded-xl ml-6 text-xs sm:text-sm shadow-sm leading-relaxed";
-  userMsg.innerText = userQuery;
-  container.appendChild(userMsg);
-
-  const aiMsg = document.createElement('div');
-  aiMsg.className = "bg-teal-50/90 p-3.5 rounded-xl mr-6 border border-teal-200 text-slate-800 text-xs sm:text-sm space-y-1.5 animate-pulse leading-relaxed";
-  aiMsg.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1 text-teal-600"></i> Processando raciocínio sob protocolo ACF...`;
-  container.appendChild(aiMsg);
-  container.scrollTop = container.scrollHeight;
-
-  const apiKey = getActiveApiKey();
-  const hasWorker = CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO");
-  const hasDirectKey = apiKey && apiKey.startsWith('AIzaSy');
-
-  if (hasWorker || hasDirectKey) {
-    try {
-      const response = await callGeminiLiveApi(apiKey, userQuery);
-      aiMsg.classList.remove('animate-pulse');
-      const originBadge = hasWorker && !hasDirectKey 
-        ? `<div class="text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-1 flex items-center gap-1"><i class="fa-solid fa-cloud text-emerald-600"></i> Resposta Gemini Live (Proxy Cloudflare)</div>`
-        : `<div class="text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-1 flex items-center gap-1"><i class="fa-solid fa-bolt text-emerald-600"></i> Resposta Gemini Live (Online ACF)</div>`;
-      aiMsg.innerHTML = originBadge + response;
-      container.scrollTop = container.scrollHeight;
-      return;
-    } catch (err) {
-      console.warn("Falha na chamada Gemini API Live / Worker:", err);
-      aiMsg.classList.remove('animate-pulse');
-      aiMsg.innerHTML = `<div class="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 text-xs mb-2">
-        <b class="block font-bold mb-0.5"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Erro na conexão online:</b>
-        <span class="font-mono text-[11px]">${err.message || 'Falha de comunicação'}</span>
-        <div class="mt-1 text-[11px] text-slate-600 font-sans">Exibindo resposta de contingência do Motor Local ACF:</div>
-      </div>` + generateSemanticCopilotResponse(userQuery);
-      container.scrollTop = container.scrollHeight;
-      return;
-    }
-  }
-
-  setTimeout(() => {
-    aiMsg.classList.remove('animate-pulse');
-    aiMsg.innerHTML = `<div class="text-[10px] font-bold text-teal-800 uppercase tracking-wider mb-1 flex items-center gap-1"><i class="fa-solid fa-microchip text-teal-600"></i> Motor Local ACF (0ms)</div>` + generateSemanticCopilotResponse(userQuery);
-    container.scrollTop = container.scrollHeight;
-  }, 250);
+  let clean = text
+    // 1. Remove tags brutas de sistema e metadados de depuração
+    .replace(/\[ACF\s+[^\]]+\]/gi, '')
+    .replace(/
+```[a-z]*\n[\s\S]*?```/gi, '')
+    
+    // 2. Converte títulos de seções (#, ##, ###) em títulos visuais elegantes
+    .replace(/^###\s*(.*$)/gim, '<h4 class="font-bold text-slate-900 mt-2.5 mb-1 text-xs sm:text-sm flex items-center gap-1.5"><i class="fa-solid fa-circle-chevron-right text-teal-600 text-[10px]"></i> $1</h4>')
+    .replace(/^##\s*(.*$)/gim, '<h3 class="font-extrabold text-teal-950 mt-3 mb-1 text-sm border-b border-teal-100 pb-1">$1</h3>')
+    .replace(/^#\s*(.*$)/gim, '<h2 class="font-black text-teal-950 mt-3.5 mb-1.5 text-sm sm:text-base">$1</h2>')
+    
+    // 3. Converte **negrito** e *itálico* em tags HTML nativas
+    .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-slate-900">$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em class="italic text-slate-700">$1</em>')
+    
+    // 4. Converte listas com marcadores (- ou *) em itens limpos com recuo
+    .replace(/^\s*[\-\*]\s+(.*$)/gim, '<li class="ml-3.5 list-disc text-slate-700 leading-relaxed my-0.5">$1</li>')
+    
+    // 5. Normaliza quebras de linha e espaçamentos
+    .replace(/\n{2,}/g, '<div class="my-2"></div>')
+    .replace(/\n/g, '<br>');
+    
+  return clean.trim();
 }
 
+/**
+ * Executa a requisição com o Cloudflare Worker e aplica a formatação
+ */
 async function callGeminiLiveApi(key, query) {
   const cachedAcf = localStorage.getItem('cached_acf_kernel');
-  const acfSystemInstruction = cachedAcf || `=== PROTOCOLO ACF: KERNEL MATRIX (POLYMORPHIC SOTA) ===
-[STATUS]: FONTE PRIMÁRIA ABSOLUTA DE GOVERNANÇA
-1. PRECEDÊNCIA: Instrução de Sistema > Prompt.
-2. CONTRATO DE SAÍDA: Você é o Consultor Executivo do Hub de Neurodesenvolvimento no Bairro Castelo/Pampulha, BH (Doutorado em Fonoaudiologia + Neuroaprendizagem).
-3. RIGOR: Raciocine profundamente sobre a pergunta. Responda com fundamentação analítica baseada em evidências, rigor em Unit Economics (Fator R 6%), LGPD Art. 14, CAA, TAV, estratégias de Google Search/Social Media de alta intenção e Vendas Complexas B2B/B2C. Formate a resposta em HTML limpo (usando b, p, ul, li).`;
+  const acfSystemInstruction = cachedAcf || `=== PROTOCOLO EXECUTIVO: HUB DE ENGENHARIA DE INTEGRAÇÃO ===
+Você é o Consultor Executivo do Hub de Neurodesenvolvimento no Bairro Castelo/Pampulha, BH (Doutorado Fonoaudiologia + Psicopedagogia).
+DIRETRIZES DE RESPOSTA:
+1. Responda de forma extremamente direta, concisa e executiva (máximo de 3 a 4 tópicos curtos).
+2. Não use introduções longas. Vá direto ao ponto prático.
+3. Foque estritamente em: CAA (TD Snap/PODD), TAV (Implante Coclear), PDI escolar, compliance com a LBI, Fator R a 6% e vendas semestrais Value-Based.
+4. Formate sempre com marcadores claros e títulos objetivos. Nunca gere caixas ASCII de texto ou logs de depuração.`;
 
   const payload = {
     systemInstruction: {
@@ -4519,11 +4455,12 @@ async function callGeminiLiveApi(key, query) {
       { role: "user", parts: [{ text: query }] }
     ],
     generationConfig: {
-      temperature: 0.7
+      temperature: 0.5, // Reduzido para maior precisão e menor divagação
+      maxOutputTokens: 800 // Evita respostas excessivamente longas
     }
   };
 
-  // ROTA 1: Cloudflare Worker Proxy (Automático para todos os visitantes)
+  // 1. Chamada prioritária via Cloudflare Worker
   if (CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO")) {
     const workerRes = await fetch(CLOUDFLARE_WORKER_URL, {
       method: "POST",
@@ -4543,18 +4480,15 @@ async function callGeminiLiveApi(key, query) {
     const data = await workerRes.json();
     const parts = data.candidates?.[0]?.content?.parts || [];
     const textPart = parts.find(p => p.text && !p.thought) || parts[0];
-    return textPart ? textPart.text.replace(/\n/g, '<br>') : "Resposta processada com sucesso.";
+    return formatAiResponse(textPart ? textPart.text : "Resposta processada com sucesso.");
   }
 
-  // ROTA 2: Chamada direta caso haja chave inserida manualmente no navegador
+  // 2. Chamada direta de contingência caso exista chave manual
   const sanitizedKey = sanitizeApiKey(key);
   if (sanitizedKey && sanitizedKey.startsWith('AIzaSy')) {
     const directRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${encodeURIComponent(sanitizedKey)}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": sanitizedKey
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
 
@@ -4566,10 +4500,10 @@ async function callGeminiLiveApi(key, query) {
     const data = await directRes.json();
     const parts = data.candidates?.[0]?.content?.parts || [];
     const textPart = parts.find(p => p.text && !p.thought) || parts[0];
-    return textPart ? textPart.text.replace(/\n/g, '<br>') : "Resposta processada com sucesso.";
+    return formatAiResponse(textPart ? textPart.text : "Resposta processada com sucesso.");
   }
 
-  throw new Error("Nenhum canal ativo de IA configurado (Worker ou Chave).");
+  throw new Error("Nenhum canal ativo de IA configurado.");
 }
 
     function generateSemanticCopilotResponse(query) {
