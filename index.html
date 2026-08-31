@@ -4228,10 +4228,12 @@ function updateCopilotModeBadge() {
   if (!badge) return;
 
   const directKey = getActiveApiKey();
+  const hasWorker = CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO");
+
   if (directKey && directKey.startsWith('AIzaSy')) {
-    badge.innerText = "Modo: Gemini Live Direto (Chave Local)";
+    badge.innerText = "Modo: Gemini Live (Chave Local)";
     badge.className = "text-[11px] text-emerald-300 font-mono flex items-center gap-1";
-  } else if (CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO")) {
+  } else if (hasWorker) {
     badge.innerText = "Modo: Gemini Live Cloud (Proxy Seguro)";
     badge.className = "text-[11px] text-emerald-300 font-mono flex items-center gap-1";
   } else {
@@ -4240,12 +4242,267 @@ function updateCopilotModeBadge() {
   }
 }
 
-/**
- * Função unificada de chamada à IA:
- * 1. Tenta o Cloudflare Worker se configurado.
- * 2. Se houver chave direta configurada pelo usuário, usa o gateway do Google.
- * 3. Se falhar, aciona o fallback do Motor Local ACF.
- */
+function toggleApiSettings() {
+  const panel = document.getElementById('api-settings-panel');
+  if (panel) panel.classList.toggle('hidden');
+}
+
+function toggleManualKernelInput() {
+  const urlBox = document.getElementById('kernel-url-box');
+  const manualBox = document.getElementById('kernel-manual-box');
+  if (urlBox && manualBox) {
+    urlBox.classList.toggle('hidden');
+    manualBox.classList.toggle('hidden');
+    const saved = localStorage.getItem('cached_acf_kernel');
+    const txtArea = document.getElementById('acf-manual-text-input');
+    if (saved && txtArea && !txtArea.value) txtArea.value = saved;
+  }
+}
+
+function saveApiKey() {
+  const keyInput = document.getElementById('gemini-api-key-input');
+  const key = keyInput ? sanitizeApiKey(keyInput.value) : '';
+  
+  if (key) {
+    localStorage.setItem('gemini_api_key', key);
+    updateCopilotModeBadge();
+    showToast("Chave Gemini salva no navegador. Clique em 'Testar' para validar.");
+  } else {
+    showToast("Insira uma chave válida do Google AI Studio.");
+  }
+}
+
+function clearApiKey() {
+  localStorage.removeItem('gemini_api_key');
+  localStorage.removeItem('gemini_active_model');
+  localStorage.removeItem('gemini_api_version');
+  
+  const keyInput = document.getElementById('gemini-api-key-input');
+  if (keyInput) keyInput.value = '';
+  
+  const statusEl = document.getElementById('api-test-status');
+  if (statusEl) statusEl.classList.add('hidden');
+  
+  updateCopilotModeBadge();
+  showToast("Chave removida. Modo padrão reativado.");
+}
+
+function saveManualKernelText() {
+  const txtArea = document.getElementById('acf-manual-text-input');
+  const text = txtArea ? txtArea.value.trim() : '';
+  if (text && text.length > 20) {
+    localStorage.setItem('cached_acf_kernel', text);
+    showToast("Protocolo ACF salvo localmente com sucesso!");
+    const statusEl = document.getElementById('api-test-status');
+    if (statusEl) {
+      statusEl.classList.remove('hidden');
+      statusEl.innerHTML = `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check mr-1"></i> Protocolo ACF ativo (${text.length} caracteres).</span>`;
+    }
+  } else {
+    showToast("Cole o texto do protocolo antes de salvar.");
+  }
+}
+
+async function testGeminiApiConnection() {
+  const statusEl = document.getElementById('api-test-status');
+  const keyInput = document.getElementById('gemini-api-key-input');
+  const rawKey = keyInput && keyInput.value ? keyInput.value : getActiveApiKey();
+  const key = sanitizeApiKey(rawKey);
+  const hasWorker = CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO");
+
+  if (!hasWorker && (!key || key.length < 20 || !key.startsWith('AIzaSy'))) {
+    showToast("Insira sua chave Gemini ou configure a URL do Cloudflare Worker.");
+    if (statusEl) {
+      statusEl.classList.remove('hidden');
+      statusEl.innerHTML = `<span class="text-amber-700 font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Configure a URL do Worker ou insira sua chave AIzaSy.</span>`;
+    }
+    return;
+  }
+
+  if (statusEl) {
+    statusEl.classList.remove('hidden');
+    statusEl.innerHTML = `<span class="text-indigo-600 font-medium"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Validando conexão com o motor de IA...</span>`;
+  }
+
+  try {
+    const testResponse = await callGeminiLiveApi(key, "Responda apenas com: CONECTADO");
+    updateCopilotModeBadge();
+    if (statusEl) {
+      statusEl.innerHTML = `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check mr-1"></i> Conexão ativa com sucesso! (${testResponse})</span>`;
+    }
+    showToast("Conexão validada com sucesso!");
+  } catch (err) {
+    console.error("Erro na validação da API:", err);
+    if (statusEl) {
+      statusEl.innerHTML = `<span class="text-rose-600 font-bold"><i class="fa-solid fa-circle-xmark mr-1"></i> Falha: ${err.message}</span>`;
+    }
+    showToast("Falha ao testar conexão.");
+  }
+}
+
+async function syncAcfKernelFromUrl() {
+  const urlInput = document.getElementById('acf-sync-url-input');
+  let url = urlInput && urlInput.value.trim() ? urlInput.value.trim() : getActiveSyncUrl();
+  
+  if (!url || url.includes('SEU_GIST')) {
+    showToast("Insira o link Raw do GitHub Gist.");
+    return;
+  }
+
+  localStorage.setItem('acf_sync_url', url);
+  showToast("Sincronizando Protocolo ACF...");
+  const statusEl = document.getElementById('api-test-status');
+
+  const fetchTargets = [
+    url,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    `https://corsproxy.io/?${encodeURIComponent(url)}`
+  ];
+
+  let syncSuccess = false;
+  let loadedText = '';
+
+  for (const target of fetchTargets) {
+    try {
+      const response = await fetch(target);
+      if (response.ok) {
+        const text = await response.text();
+        if (text && text.length > 50 && !text.includes('<!DOCTYPE html>')) {
+          loadedText = text;
+          syncSuccess = true;
+          break;
+        }
+      }
+    } catch (e) {
+      console.warn("Tentativa de sync falhou em:", target, e);
+    }
+  }
+
+  if (syncSuccess) {
+    localStorage.setItem('cached_acf_kernel', loadedText);
+    showToast("Kernel ACF sincronizado com sucesso!");
+    if (statusEl) {
+      statusEl.classList.remove('hidden');
+      statusEl.innerHTML = `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check mr-1"></i> Kernel ACF atualizado (${loadedText.length} caracteres).</span>`;
+    }
+  } else {
+    showToast("Falha na sincronização. Use 'Alternar p/ Colar Texto Direto'.");
+    if (statusEl) {
+      statusEl.classList.remove('hidden');
+      statusEl.innerHTML = `<span class="text-amber-700 font-medium"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Falha no link. Use 'Alternar p/ Colar Texto Direto'.</span>`;
+    }
+    const manualBox = document.getElementById('kernel-manual-box');
+    if (manualBox && manualBox.classList.contains('hidden')) {
+      toggleManualKernelInput();
+    }
+  }
+}
+
+function toggleCopilotDrawer(initialQuery = null) {
+  const drawer = document.getElementById('ai-copilot-drawer');
+  const backdrop = document.getElementById('drawer-backdrop');
+  const panel = document.getElementById('drawer-panel');
+
+  if (!drawer || !backdrop || !panel) return;
+
+  const isHidden = panel.classList.contains('translate-x-full');
+
+  if (isHidden) {
+    updateCopilotModeBadge();
+    
+    const activeKey = getActiveApiKey();
+    const keyInput = document.getElementById('gemini-api-key-input');
+    if (keyInput && activeKey && activeKey.startsWith('AIzaSy')) {
+      keyInput.value = activeKey;
+    }
+
+    const activeUrl = getActiveSyncUrl();
+    const urlInput = document.getElementById('acf-sync-url-input');
+    if (urlInput && activeUrl && !activeUrl.includes('SEU_GIST')) {
+      urlInput.value = activeUrl;
+    }
+
+    drawer.classList.remove('pointer-events-none');
+    backdrop.classList.remove('hidden');
+    setTimeout(() => {
+      backdrop.classList.remove('opacity-0');
+      panel.classList.remove('translate-x-full');
+    }, 10);
+
+    if (initialQuery) {
+      handleCopilotQuery(initialQuery);
+    }
+  } else {
+    backdrop.classList.add('opacity-0');
+    panel.classList.add('translate-x-full');
+    setTimeout(() => {
+      backdrop.classList.add('hidden');
+      drawer.classList.add('pointer-events-none');
+    }, 300);
+  }
+}
+
+function askCopilotPredefined(query) {
+  handleCopilotQuery(query);
+}
+
+function sendCopilotCustomQuery() {
+  const input = document.getElementById('copilot-input');
+  const query = input ? input.value.trim() : '';
+  if (!query) return;
+  input.value = '';
+  handleCopilotQuery(query);
+}
+
+async function handleCopilotQuery(userQuery) {
+  const container = document.getElementById('copilot-messages');
+  if (!container) return;
+  
+  const userMsg = document.createElement('div');
+  userMsg.className = "bg-slate-900 text-white p-3 rounded-xl ml-6 text-xs sm:text-sm shadow-sm leading-relaxed";
+  userMsg.innerText = userQuery;
+  container.appendChild(userMsg);
+
+  const aiMsg = document.createElement('div');
+  aiMsg.className = "bg-teal-50/90 p-3.5 rounded-xl mr-6 border border-teal-200 text-slate-800 text-xs sm:text-sm space-y-1.5 animate-pulse leading-relaxed";
+  aiMsg.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1 text-teal-600"></i> Processando raciocínio sob protocolo ACF...`;
+  container.appendChild(aiMsg);
+  container.scrollTop = container.scrollHeight;
+
+  const apiKey = getActiveApiKey();
+  const hasWorker = CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO");
+  const hasDirectKey = apiKey && apiKey.startsWith('AIzaSy');
+
+  if (hasWorker || hasDirectKey) {
+    try {
+      const response = await callGeminiLiveApi(apiKey, userQuery);
+      aiMsg.classList.remove('animate-pulse');
+      const originBadge = hasWorker && !hasDirectKey 
+        ? `<div class="text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-1 flex items-center gap-1"><i class="fa-solid fa-cloud text-emerald-600"></i> Resposta Gemini Live (Proxy Cloudflare)</div>`
+        : `<div class="text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-1 flex items-center gap-1"><i class="fa-solid fa-bolt text-emerald-600"></i> Resposta Gemini Live (Online ACF)</div>`;
+      aiMsg.innerHTML = originBadge + response;
+      container.scrollTop = container.scrollHeight;
+      return;
+    } catch (err) {
+      console.warn("Falha na chamada Gemini API Live / Worker:", err);
+      aiMsg.classList.remove('animate-pulse');
+      aiMsg.innerHTML = `<div class="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 text-xs mb-2">
+        <b class="block font-bold mb-0.5"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Erro na conexão online:</b>
+        <span class="font-mono text-[11px]">${err.message || 'Falha de comunicação'}</span>
+        <div class="mt-1 text-[11px] text-slate-600 font-sans">Exibindo resposta de contingência do Motor Local ACF:</div>
+      </div>` + generateSemanticCopilotResponse(userQuery);
+      container.scrollTop = container.scrollHeight;
+      return;
+    }
+  }
+
+  setTimeout(() => {
+    aiMsg.classList.remove('animate-pulse');
+    aiMsg.innerHTML = `<div class="text-[10px] font-bold text-teal-800 uppercase tracking-wider mb-1 flex items-center gap-1"><i class="fa-solid fa-microchip text-teal-600"></i> Motor Local ACF (0ms)</div>` + generateSemanticCopilotResponse(userQuery);
+    container.scrollTop = container.scrollHeight;
+  }, 250);
+}
+
 async function callGeminiLiveApi(key, query) {
   const cachedAcf = localStorage.getItem('cached_acf_kernel');
   const acfSystemInstruction = cachedAcf || `=== PROTOCOLO ACF: KERNEL MATRIX (POLYMORPHIC SOTA) ===
@@ -4266,7 +4523,7 @@ async function callGeminiLiveApi(key, query) {
     }
   };
 
-  // ROTA 1: Cloudflare Worker (Prioridade recomendada para visitantes)
+  // ROTA 1: Cloudflare Worker Proxy (Automático para todos os visitantes)
   if (CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO")) {
     const workerRes = await fetch(CLOUDFLARE_WORKER_URL, {
       method: "POST",
@@ -4289,10 +4546,10 @@ async function callGeminiLiveApi(key, query) {
     return textPart ? textPart.text.replace(/\n/g, '<br>') : "Resposta processada com sucesso.";
   }
 
-  // ROTA 2: Chamada direta caso o usuário tenha inserido chave no navegador
+  // ROTA 2: Chamada direta caso haja chave inserida manualmente no navegador
   const sanitizedKey = sanitizeApiKey(key);
   if (sanitizedKey && sanitizedKey.startsWith('AIzaSy')) {
-    const directRes = await fetch(`[https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=$](https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=$){encodeURIComponent(sanitizedKey)}`, {
+    const directRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${encodeURIComponent(sanitizedKey)}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -4314,7 +4571,6 @@ async function callGeminiLiveApi(key, query) {
 
   throw new Error("Nenhum canal ativo de IA configurado (Worker ou Chave).");
 }
-
 
     function generateSemanticCopilotResponse(query) {
       const q = query.toLowerCase();
