@@ -4195,8 +4195,12 @@
 /* MÓDULO DE INTELIGÊNCIA ARTIFICIAL: COPILOT DUAL-CORE (LIVE API + ACF)      */
 /* ========================================================================= */
 
+// 1. URL DO SEU CLOUDFLARE WORKER (Cole o link público do seu Worker aqui)
+const CLOUDFLARE_WORKER_URL = "geminiproxylumina.leonardosfreitas.workers.dev"; 
+
+// 2. CREDENCIAIS PADRÃO (Deixe vazia no GitHub para segurança total)
 const DEFAULT_GEMINI_API_KEY = ""; 
-const DEFAULT_ACF_SYNC_URL = "https://gist.githubusercontent.com/SEU_USUARIO/SEU_GIST/raw/protocolo_acf.txt";
+const DEFAULT_ACF_SYNC_URL = "https://gist.githubusercontent.com/leonardosfreitas-dev/7ea3f4d47d361b40d8e225d984ba0d11/raw/kernel_protocolo_acf_mini.txt";
 
 function sanitizeApiKey(rawKey) {
   if (!rawKey) return '';
@@ -4219,279 +4223,16 @@ function getActiveSyncUrl() {
   return DEFAULT_ACF_SYNC_URL.trim();
 }
 
-function saveApiKey() {
-  const keyInput = document.getElementById('gemini-api-key-input');
-  const key = keyInput ? sanitizeApiKey(keyInput.value) : '';
-  
-  if (!key || key.length < 20 || !key.startsWith('AIzaSy')) {
-    showToast("Atenção: A chave Gemini deve começar com 'AIzaSy' e ter ~39 caracteres.");
-  }
-  
-  if (key) {
-    localStorage.setItem('gemini_api_key', key);
-    updateCopilotModeBadge();
-    showToast("Chave Gemini salva no navegador. Clique em 'Testar' para validar.");
-  } else {
-    showToast("Insira uma chave válida do Google AI Studio.");
-  }
-}
-
-function clearApiKey() {
-  localStorage.removeItem('gemini_api_key');
-  localStorage.removeItem('gemini_active_model');
-  localStorage.removeItem('gemini_api_version');
-  
-  const keyInput = document.getElementById('gemini-api-key-input');
-  if (keyInput) keyInput.value = '';
-  
-  const statusEl = document.getElementById('api-test-status');
-  if (statusEl) statusEl.classList.add('hidden');
-  
-  updateCopilotModeBadge();
-  showToast("Chave removida. Modo Local ACF reativado.");
-}
-
-function toggleManualKernelInput() {
-  const urlBox = document.getElementById('kernel-url-box');
-  const manualBox = document.getElementById('kernel-manual-box');
-  if (urlBox && manualBox) {
-    urlBox.classList.toggle('hidden');
-    manualBox.classList.toggle('hidden');
-    const saved = localStorage.getItem('cached_acf_kernel');
-    const txtArea = document.getElementById('acf-manual-text-input');
-    if (saved && txtArea && !txtArea.value) txtArea.value = saved;
-  }
-}
-
-function saveManualKernelText() {
-  const txtArea = document.getElementById('acf-manual-text-input');
-  const text = txtArea ? txtArea.value.trim() : '';
-  if (text && text.length > 20) {
-    localStorage.setItem('cached_acf_kernel', text);
-    showToast("Protocolo ACF salvo localmente com sucesso!");
-    const statusEl = document.getElementById('api-test-status');
-    if (statusEl) {
-      statusEl.classList.remove('hidden');
-      statusEl.innerHTML = `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check mr-1"></i> Protocolo ACF ativo (${text.length} caracteres).</span>`;
-    }
-  } else {
-    showToast("Cole o texto do protocolo antes de salvar.");
-  }
-}
-
-/**
- * Validação de conexão com suporte a cabeçalho x-goog-api-key e fallback dinâmico
- */
-async function testGeminiApiConnection() {
-  const keyInput = document.getElementById('gemini-api-key-input');
-  const rawKey = keyInput && keyInput.value ? keyInput.value : getActiveApiKey();
-  const key = sanitizeApiKey(rawKey);
-  const statusEl = document.getElementById('api-test-status');
-
-  if (!key || key === "SUA_CHAVE_GEMINI_AQUI" || key.length < 20) {
-    showToast("Cole sua chave Gemini (começando com AIzaSy) no campo acima.");
-    if (statusEl) {
-      statusEl.classList.remove('hidden');
-      statusEl.innerHTML = `<span class="text-amber-700 font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Cole a chave que começa com 'AIzaSy...' no campo acima.</span>`;
-    }
-    return;
-  }
-
-  if (statusEl) {
-    statusEl.classList.remove('hidden');
-    statusEl.innerHTML = `<span class="text-indigo-600 font-medium"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Validando credenciais e descobrindo modelos ativos...</span>`;
-  }
-
-  try {
-    const encodedKey = encodeURIComponent(key);
-    const authHeaders = {
-      "Content-Type": "application/json",
-      "x-goog-api-key": key
-    };
-
-    // 1. Consulta dinâmica de modelos
-    let apiVersion = 'v1beta';
-    let listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodedKey}`, {
-      headers: authHeaders
-    });
-    
-    if (!listRes.ok) {
-      apiVersion = 'v1';
-      listRes = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${encodedKey}`, {
-        headers: authHeaders
-      });
-    }
-
-    if (!listRes.ok) {
-      const errData = await listRes.json().catch(() => ({}));
-      const msg = errData.error?.message || `HTTP ${listRes.status}`;
-      throw new Error(`Validação falhou: ${msg}`);
-    }
-
-    const listData = await listRes.json();
-    const availableModels = (listData.models || [])
-      .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'))
-      .map(m => m.name.replace(/^models\//, ''));
-
-    if (availableModels.length === 0) {
-      throw new Error("Nenhum modelo habilitado para generateContent nesta chave.");
-    }
-
-    const priorityPreferences = [
-      'gemini-3.6-flash',
-      'gemini-3.5-flash',
-      'gemini-3.0-flash',
-      'gemini-3-flash',
-      'gemini-2.0-flash',
-      'gemini-2.0-flash-exp',
-      'gemini-flash-latest',
-      'gemini-1.5-flash-latest',
-      'gemini-1.5-flash-002',
-      'gemini-1.5-flash'
-    ];
-
-    let sortedCandidates = [];
-    for (const pref of priorityPreferences) {
-      if (availableModels.includes(pref) && !sortedCandidates.includes(pref)) {
-        sortedCandidates.push(pref);
-      }
-    }
-    for (const m of availableModels) {
-      if (!sortedCandidates.includes(m)) {
-        sortedCandidates.push(m);
-      }
-    }
-
-    let workingModel = null;
-    let workingVersion = apiVersion;
-    let lastError = null;
-
-    // 2. Loop de teste ativo com chamada real de inferência
-    for (const modelCandidate of sortedCandidates) {
-      if (statusEl) {
-        statusEl.innerHTML = `<span class="text-indigo-600 font-medium"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Testando modelo '<b>${modelCandidate}</b>'...</span>`;
-      }
-
-      const versionsToTest = [apiVersion, apiVersion === 'v1beta' ? 'v1' : 'v1beta'];
-      
-      for (const ver of versionsToTest) {
-        try {
-          const testUrl = `https://generativelanguage.googleapis.com/${ver}/models/${modelCandidate}:generateContent?key=${encodedKey}`;
-          const testPayload = {
-            contents: [{ role: "user", parts: [{ text: "Responda apenas: CONECTADO" }] }]
-          };
-
-          const testRes = await fetch(testUrl, {
-            method: "POST",
-            headers: authHeaders,
-            body: JSON.stringify(testPayload)
-          });
-
-          if (testRes.ok) {
-            workingModel = modelCandidate;
-            workingVersion = ver;
-            break;
-          } else {
-            const errData = await testRes.json().catch(() => ({}));
-            lastError = errData.error?.message || `HTTP ${testRes.status}`;
-          }
-        } catch (e) {
-          lastError = e.message;
-        }
-      }
-
-      if (workingModel) break;
-    }
-
-    if (!workingModel) {
-      throw new Error(`Nenhum modelo testado respondeu. Último erro: ${lastError}`);
-    }
-
-    // 3. Persistência de sucesso
-    localStorage.setItem('gemini_api_key', key);
-    localStorage.setItem('gemini_active_model', workingModel);
-    localStorage.setItem('gemini_api_version', workingVersion);
-    updateCopilotModeBadge();
-
-    if (statusEl) {
-      statusEl.innerHTML = `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check mr-1"></i> Conectado com sucesso via <b>${workingModel}</b> (${workingVersion}).</span>`;
-    }
-    showToast(`API conectada com sucesso via ${workingModel}!`);
-  } catch (err) {
-    console.error("Erro no teste da API Gemini:", err);
-    if (statusEl) {
-      statusEl.innerHTML = `<span class="text-rose-600 font-bold"><i class="fa-solid fa-circle-xmark mr-1"></i> ${err.message}</span>`;
-    }
-    showToast("Falha ao validar chave API.");
-  }
-}
-
-async function syncAcfKernelFromUrl() {
-  const urlInput = document.getElementById('acf-sync-url-input');
-  let url = urlInput && urlInput.value.trim() ? urlInput.value.trim() : getActiveSyncUrl();
-  
-  if (!url || url.includes('SEU_GIST')) {
-    showToast("Insira o link Raw do GitHub Gist.");
-    return;
-  }
-
-  localStorage.setItem('acf_sync_url', url);
-
-  showToast("Sincronizando Protocolo ACF...");
-  const statusEl = document.getElementById('api-test-status');
-
-  const fetchTargets = [
-    url,
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-    `https://corsproxy.io/?${encodeURIComponent(url)}`
-  ];
-
-  let syncSuccess = false;
-  let loadedText = '';
-
-  for (const target of fetchTargets) {
-    try {
-      const response = await fetch(target);
-      if (response.ok) {
-        const text = await response.text();
-        if (text && text.length > 50 && !text.includes('<!DOCTYPE html>')) {
-          loadedText = text;
-          syncSuccess = true;
-          break;
-        }
-      }
-    } catch (e) {
-      console.warn("Tentativa de sync falhou em:", target, e);
-    }
-  }
-
-  if (syncSuccess) {
-    localStorage.setItem('cached_acf_kernel', loadedText);
-    showToast("Kernel ACF sincronizado e salvo com sucesso!");
-    if (statusEl) {
-      statusEl.classList.remove('hidden');
-      statusEl.innerHTML = `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check mr-1"></i> Kernel ACF atualizado (${loadedText.length} caracteres).</span>`;
-    }
-  } else {
-    showToast("Falha na sincronização. Use 'Alternar p/ Colar Texto Direto'.");
-    if (statusEl) {
-      statusEl.classList.remove('hidden');
-      statusEl.innerHTML = `<span class="text-amber-700 font-medium"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Falha no link. Use 'Alternar p/ Colar Texto Direto'.</span>`;
-    }
-    const manualBox = document.getElementById('kernel-manual-box');
-    if (manualBox && manualBox.classList.contains('hidden')) {
-      toggleManualKernelInput();
-    }
-  }
-}
-
 function updateCopilotModeBadge() {
-  const key = getActiveApiKey();
   const badge = document.getElementById('copilot-mode-badge');
   if (!badge) return;
-  if (key && key.startsWith('AIzaSy')) {
-    const model = localStorage.getItem('gemini_active_model') || 'gemini-live';
-    badge.innerText = `Modo: Gemini Live (${model})`;
+
+  const directKey = getActiveApiKey();
+  if (directKey && directKey.startsWith('AIzaSy')) {
+    badge.innerText = "Modo: Gemini Live Direto (Chave Local)";
+    badge.className = "text-[11px] text-emerald-300 font-mono flex items-center gap-1";
+  } else if (CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO")) {
+    badge.innerText = "Modo: Gemini Live Cloud (Proxy Seguro)";
     badge.className = "text-[11px] text-emerald-300 font-mono flex items-center gap-1";
   } else {
     badge.innerText = "Modo: Motor Local ACF (0ms)";
@@ -4499,106 +4240,13 @@ function updateCopilotModeBadge() {
   }
 }
 
-function toggleCopilotDrawer(initialQuery = null) {
-  const drawer = document.getElementById('ai-copilot-drawer');
-  const backdrop = document.getElementById('drawer-backdrop');
-  const panel = document.getElementById('drawer-panel');
-
-  const isHidden = panel.classList.contains('translate-x-full');
-
-  if (isHidden) {
-    updateCopilotModeBadge();
-    
-    const activeKey = getActiveApiKey();
-    const keyInput = document.getElementById('gemini-api-key-input');
-    if (keyInput && activeKey && activeKey.startsWith('AIzaSy')) {
-      keyInput.value = activeKey;
-    }
-
-    const activeUrl = getActiveSyncUrl();
-    const urlInput = document.getElementById('acf-sync-url-input');
-    if (urlInput && activeUrl && !activeUrl.includes('SEU_GIST')) {
-      urlInput.value = activeUrl;
-    }
-
-    drawer.classList.remove('pointer-events-none');
-    backdrop.classList.remove('hidden');
-    setTimeout(() => {
-      backdrop.classList.remove('opacity-0');
-      panel.classList.remove('translate-x-full');
-    }, 10);
-
-    if (initialQuery) {
-      handleCopilotQuery(initialQuery);
-    }
-  } else {
-    backdrop.classList.add('opacity-0');
-    panel.classList.add('translate-x-full');
-    setTimeout(() => {
-      backdrop.classList.add('hidden');
-      drawer.classList.add('pointer-events-none');
-    }, 300);
-  }
-}
-
-function askCopilotPredefined(query) {
-  handleCopilotQuery(query);
-}
-
-function sendCopilotCustomQuery() {
-  const input = document.getElementById('copilot-input');
-  const query = input ? input.value.trim() : '';
-  if (!query) return;
-  input.value = '';
-  handleCopilotQuery(query);
-}
-
-async function handleCopilotQuery(userQuery) {
-  const container = document.getElementById('copilot-messages');
-  if (!container) return;
-  
-  const userMsg = document.createElement('div');
-  userMsg.className = "bg-slate-900 text-white p-3 rounded-xl ml-6 text-xs sm:text-sm shadow-sm leading-relaxed";
-  userMsg.innerText = userQuery;
-  container.appendChild(userMsg);
-
-  const aiMsg = document.createElement('div');
-  aiMsg.className = "bg-teal-50/90 p-3.5 rounded-xl mr-6 border border-teal-200 text-slate-800 text-xs sm:text-sm space-y-1.5 animate-pulse leading-relaxed";
-  aiMsg.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1 text-teal-600"></i> Processando raciocínio sob protocolo ACF...`;
-  container.appendChild(aiMsg);
-  container.scrollTop = container.scrollHeight;
-
-  const apiKey = getActiveApiKey();
-
-  if (apiKey && apiKey.startsWith('AIzaSy')) {
-    try {
-      const response = await callGeminiLiveApi(apiKey, userQuery);
-      aiMsg.classList.remove('animate-pulse');
-      aiMsg.innerHTML = `<div class="text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-1 flex items-center gap-1"><i class="fa-solid fa-bolt text-emerald-600"></i> Resposta Gemini Live (Online ACF)</div>` + response;
-      container.scrollTop = container.scrollHeight;
-      return;
-    } catch (err) {
-      console.warn("Falha na chamada Gemini API Live:", err);
-      aiMsg.classList.remove('animate-pulse');
-      aiMsg.innerHTML = `<div class="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 text-xs mb-2">
-        <b class="block font-bold mb-0.5"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Erro na chamada Live API:</b>
-        <span class="font-mono text-[11px]">${err.message || 'Falha de comunicação'}</span>
-        <div class="mt-1 text-[11px] text-slate-600 font-sans">Exibindo resposta de contingência do Motor Local ACF:</div>
-      </div>` + generateSemanticCopilotResponse(userQuery);
-      container.scrollTop = container.scrollHeight;
-      return;
-    }
-  }
-
-  setTimeout(() => {
-    aiMsg.classList.remove('animate-pulse');
-    aiMsg.innerHTML = `<div class="text-[10px] font-bold text-teal-800 uppercase tracking-wider mb-1 flex items-center gap-1"><i class="fa-solid fa-microchip text-teal-600"></i> Motor Local ACF (0ms)</div>` + generateSemanticCopilotResponse(userQuery);
-    container.scrollTop = container.scrollHeight;
-  }, 250);
-}
-
+/**
+ * Função unificada de chamada à IA:
+ * 1. Tenta o Cloudflare Worker se configurado.
+ * 2. Se houver chave direta configurada pelo usuário, usa o gateway do Google.
+ * 3. Se falhar, aciona o fallback do Motor Local ACF.
+ */
 async function callGeminiLiveApi(key, query) {
-  const sanitizedKey = sanitizeApiKey(key);
   const cachedAcf = localStorage.getItem('cached_acf_kernel');
   const acfSystemInstruction = cachedAcf || `=== PROTOCOLO ACF: KERNEL MATRIX (POLYMORPHIC SOTA) ===
 [STATUS]: FONTE PRIMÁRIA ABSOLUTA DE GOVERNANÇA
@@ -4606,24 +4254,45 @@ async function callGeminiLiveApi(key, query) {
 2. CONTRATO DE SAÍDA: Você é o Consultor Executivo do Hub de Neurodesenvolvimento no Bairro Castelo/Pampulha, BH (Doutorado em Fonoaudiologia + Neuroaprendizagem).
 3. RIGOR: Raciocine profundamente sobre a pergunta. Responda com fundamentação analítica baseada em evidências, rigor em Unit Economics (Fator R 6%), LGPD Art. 14, CAA, TAV, estratégias de Google Search/Social Media de alta intenção e Vendas Complexas B2B/B2C. Formate a resposta em HTML limpo (usando b, p, ul, li).`;
 
-  let activeModel = localStorage.getItem('gemini_active_model') || 'gemini-3.6-flash';
-  let apiVersion = localStorage.getItem('gemini_api_version') || 'v1beta';
+  const payload = {
+    systemInstruction: {
+      parts: [{ text: acfSystemInstruction }]
+    },
+    contents: [
+      { role: "user", parts: [{ text: query }] }
+    ],
+    generationConfig: {
+      temperature: 0.7
+    }
+  };
 
-  const makeRequest = async (modelName, version) => {
-    const url = `https://generativelanguage.googleapis.com/${version}/models/${modelName}:generateContent?key=${encodeURIComponent(sanitizedKey)}`;
-    const payload = {
-      systemInstruction: {
-        parts: [{ text: acfSystemInstruction }]
-      },
-      contents: [
-        { role: "user", parts: [{ text: query }] }
-      ],
-      generationConfig: {
-        temperature: 0.7
-      }
-    };
+  // ROTA 1: Cloudflare Worker (Prioridade recomendada para visitantes)
+  if (CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO")) {
+    const workerRes = await fetch(CLOUDFLARE_WORKER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "gemini-3.6-flash",
+        apiVersion: "v1beta",
+        payload: payload
+      })
+    });
 
-    const res = await fetch(url, {
+    if (!workerRes.ok) {
+      const errData = await workerRes.json().catch(() => ({}));
+      throw new Error(`[Cloudflare Worker] ${errData.error || `HTTP ${workerRes.status}`}`);
+    }
+
+    const data = await workerRes.json();
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    const textPart = parts.find(p => p.text && !p.thought) || parts[0];
+    return textPart ? textPart.text.replace(/\n/g, '<br>') : "Resposta processada com sucesso.";
+  }
+
+  // ROTA 2: Chamada direta caso o usuário tenha inserido chave no navegador
+  const sanitizedKey = sanitizeApiKey(key);
+  if (sanitizedKey && sanitizedKey.startsWith('AIzaSy')) {
+    const directRes = await fetch(`[https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=$](https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=$){encodeURIComponent(sanitizedKey)}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -4632,60 +4301,18 @@ async function callGeminiLiveApi(key, query) {
       body: JSON.stringify(payload)
     });
 
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(`[${modelName}] ${errData.error?.message || `HTTP ${res.status}`}`);
+    if (!directRes.ok) {
+      const errData = await directRes.json().catch(() => ({}));
+      throw new Error(`[Direct API] ${errData.error?.message || `HTTP ${directRes.status}`}`);
     }
 
-    const data = await res.json();
+    const data = await directRes.json();
     const parts = data.candidates?.[0]?.content?.parts || [];
     const textPart = parts.find(p => p.text && !p.thought) || parts[0];
-    return textPart ? textPart.text : "Resposta processada com sucesso.";
-  };
-
-  try {
-    const text = await makeRequest(activeModel, apiVersion);
-    return text.replace(/\n/g, '<br>');
-  } catch (firstErr) {
-    console.warn(`Tentativa direta com ${activeModel} falhou, descobrindo modelos ativos...`, firstErr);
-
-    try {
-      let listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(sanitizedKey)}`, {
-        headers: { "x-goog-api-key": sanitizedKey }
-      });
-      let fallbackVersion = 'v1beta';
-      if (!listRes.ok) {
-        fallbackVersion = 'v1';
-        listRes = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${encodeURIComponent(sanitizedKey)}`, {
-          headers: { "x-goog-api-key": sanitizedKey }
-        });
-      }
-
-      if (listRes.ok) {
-        const listData = await listRes.json();
-        const available = (listData.models || [])
-          .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'))
-          .map(m => m.name.replace(/^models\//, ''))
-          .filter(m => m !== activeModel);
-
-        for (const fallbackModel of available) {
-          try {
-            const text = await makeRequest(fallbackModel, fallbackVersion);
-            localStorage.setItem('gemini_active_model', fallbackModel);
-            localStorage.setItem('gemini_api_version', fallbackVersion);
-            updateCopilotModeBadge();
-            return text.replace(/\n/g, '<br>');
-          } catch (e) {
-            console.warn(`Fallback para ${fallbackModel} falhou:`, e.message);
-          }
-        }
-      }
-    } catch (discoveryErr) {
-      console.warn("Falha no auto-discovery de fallback:", discoveryErr);
-    }
-
-    throw firstErr;
+    return textPart ? textPart.text.replace(/\n/g, '<br>') : "Resposta processada com sucesso.";
   }
+
+  throw new Error("Nenhum canal ativo de IA configurado (Worker ou Chave).");
 }
 
 
