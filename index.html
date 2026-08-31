@@ -3145,11 +3145,6 @@
       }
     ];
 
-<!-- ========================================================================= -->
-<!-- FIM DA PARTE 2 DE 3 — PONTO DE JUNÇÃO / SPLICING POINT COM A PARTE 3      -->
-<!-- Cole a PARTE 3 imediatamente abaixo desta linha                           -->
-<!-- ========================================================================= -->
-
 /* 3. DOSSIÊ EXPANDIDO DAS 4 ONDAS DO ROADMAP */
     const wavesData = {
       1: {
@@ -4133,475 +4128,455 @@
       toggleCopilotDrawer(`Explique o seguinte trecho com base na estratégia do Hub: "${selectedTextBuffer}"`);
     }
 
-/* ========================================================================= */
-/* MÓDULO DE INTELIGÊNCIA ARTIFICIAL: COPILOT DUAL-CORE (LIVE API + ACF)      */
-/* ========================================================================= */
-
-// 1. URL DO SEU CLOUDFLARE WORKER (Configurado com seu proxy ativo)
-const CLOUDFLARE_WORKER_URL = "https://geminiproxylumina.leonardosfreitas.workers.dev"; 
-
-// 2. CREDENCIAIS PADRÃO E LINK RAW DO GIST
-const DEFAULT_GEMINI_API_KEY = ""; 
-const DEFAULT_ACF_SYNC_URL = "https://gist.githubusercontent.com/leonardosfreitas-dev/7ea3f4d47d361b40d8e225d984ba0d11/raw/kernel_protocolo_acf_mini.txt";
-
-function sanitizeApiKey(rawKey) {
-  if (!rawKey) return '';
-  return rawKey.trim().replace(/^["']|["']$/g, '');
-}
-
-function getActiveApiKey() {
-  const customKey = localStorage.getItem('gemini_api_key');
-  if (customKey && customKey.trim() !== '') {
-    return sanitizeApiKey(customKey);
-  }
-  return sanitizeApiKey(DEFAULT_GEMINI_API_KEY);
-}
-
-function getActiveSyncUrl() {
-  const customUrl = localStorage.getItem('acf_sync_url');
-  if (customUrl && customUrl.trim() !== '') {
-    return customUrl.trim();
-  }
-  return DEFAULT_ACF_SYNC_URL.trim();
-}
-
-function updateCopilotModeBadge() {
-  const badge = document.getElementById('copilot-mode-badge');
-  if (!badge) return;
-
-  const directKey = getActiveApiKey();
-  const hasWorker = CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO");
-
-  if (directKey && directKey.startsWith('AIzaSy')) {
-    badge.innerText = "Modo: Gemini Live (Chave Local)";
-    badge.className = "text-[11px] text-emerald-300 font-mono flex items-center gap-1";
-  } else if (hasWorker) {
-    badge.innerText = "Modo: Inteligência em Tempo Real (Cloudflare Proxy)";
-    badge.className = "text-[11px] text-emerald-300 font-mono flex items-center gap-1";
-  } else {
-    badge.innerText = "Modo: Motor Local ACF (0ms)";
-    badge.className = "text-[11px] text-teal-300 font-mono";
-  }
-}
-
-function toggleApiSettings() {
-  const panel = document.getElementById('api-settings-panel');
-  if (panel) panel.classList.toggle('hidden');
-}
-
-function toggleManualKernelInput() {
-  const urlBox = document.getElementById('kernel-url-box');
-  const manualBox = document.getElementById('kernel-manual-box');
-  if (urlBox && manualBox) {
-    urlBox.classList.toggle('hidden');
-    manualBox.classList.toggle('hidden');
-    const saved = localStorage.getItem('cached_acf_kernel');
-    const txtArea = document.getElementById('acf-manual-text-input');
-    if (saved && txtArea && !txtArea.value) txtArea.value = saved;
-  }
-}
-
-function saveApiKey() {
-  const keyInput = document.getElementById('gemini-api-key-input');
-  const key = keyInput ? sanitizeApiKey(keyInput.value) : '';
-  
-  if (key) {
-    localStorage.setItem('gemini_api_key', key);
-    updateCopilotModeBadge();
-    showToast("Chave Gemini salva no navegador. Clique em 'Testar' para validar.");
-  } else {
-    showToast("Insira uma chave válida do Google AI Studio.");
-  }
-}
-
-function clearApiKey() {
-  localStorage.removeItem('gemini_api_key');
-  localStorage.removeItem('gemini_active_model');
-  localStorage.removeItem('gemini_api_version');
-  
-  const keyInput = document.getElementById('gemini-api-key-input');
-  if (keyInput) keyInput.value = '';
-  
-  const statusEl = document.getElementById('api-test-status');
-  if (statusEl) statusEl.classList.add('hidden');
-  
-  updateCopilotModeBadge();
-  showToast("Chave removida. Modo padrão reativado.");
-}
-
-function saveManualKernelText() {
-  const txtArea = document.getElementById('acf-manual-text-input');
-  const text = txtArea ? txtArea.value.trim() : '';
-  if (text && text.length > 20) {
-    localStorage.setItem('cached_acf_kernel', text);
-    showToast("Protocolo ACF salvo localmente com sucesso!");
-    const statusEl = document.getElementById('api-test-status');
-    if (statusEl) {
-      statusEl.classList.remove('hidden');
-      statusEl.innerHTML = `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check mr-1"></i> Protocolo ACF ativo (${text.length} caracteres).</span>`;
+    function toggleApiSettings() {
+      const panel = document.getElementById('api-settings-panel');
+      if (panel) panel.classList.toggle('hidden');
     }
-  } else {
-    showToast("Cole o texto do protocolo antes de salvar.");
-  }
-}
 
-async function testGeminiApiConnection() {
-  const statusEl = document.getElementById('api-test-status');
-  const keyInput = document.getElementById('gemini-api-key-input');
-  const rawKey = keyInput && keyInput.value ? keyInput.value : getActiveApiKey();
-  const key = sanitizeApiKey(rawKey);
-  const hasWorker = CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO");
+    /* ========================================================================= */
+    /* MÓDULO DE INTELIGÊNCIA ARTIFICIAL: COPILOT DUAL-CORE (LIVE API + ACF)     */
+    /* ========================================================================= */
 
-  if (!hasWorker && (!key || key.length < 20 || !key.startsWith('AIzaSy'))) {
-    showToast("Insira sua chave Gemini ou configure a URL do Cloudflare Worker.");
-    if (statusEl) {
-      statusEl.classList.remove('hidden');
-      statusEl.innerHTML = `<span class="text-amber-700 font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Configure a URL do Worker ou insira sua chave AIzaSy.</span>`;
+    // 1. URL DO CLOUDFLARE WORKER
+    const CLOUDFLARE_WORKER_URL = "https://geminiproxylumina.leonardosfreitas.workers.dev"; 
+
+    // 2. CREDENCIAIS E SYNC PADRÃO
+    const DEFAULT_GEMINI_API_KEY = ""; 
+    const DEFAULT_ACF_SYNC_URL = "https://gist.githubusercontent.com/leonardosfreitas-dev/7ea3f4d47d361b40d8e225d984ba0d11/raw/kernel_protocolo_acf_mini.txt";
+
+    function sanitizeApiKey(rawKey) {
+      if (!rawKey) return '';
+      return rawKey.trim().replace(/^["']|["']$/g, '');
     }
-    return;
-  }
 
-  if (statusEl) {
-    statusEl.classList.remove('hidden');
-    statusEl.innerHTML = `<span class="text-indigo-600 font-medium"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Validando conexão com o motor de IA...</span>`;
-  }
-
-  try {
-    const testResponse = await callGeminiLiveApi(key, "Responda apenas com: CONECTADO");
-    updateCopilotModeBadge();
-    if (statusEl) {
-      statusEl.innerHTML = `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check mr-1"></i> Conexão ativa com sucesso! (${testResponse})</span>`;
+    function getActiveApiKey() {
+      const customKey = localStorage.getItem('gemini_api_key');
+      if (customKey && customKey.trim() !== '') {
+        return sanitizeApiKey(customKey);
+      }
+      return sanitizeApiKey(DEFAULT_GEMINI_API_KEY);
     }
-    showToast("Conexão validada com sucesso!");
-  } catch (err) {
-    console.error("Erro na validação da API:", err);
-    if (statusEl) {
-      statusEl.innerHTML = `<span class="text-rose-600 font-bold"><i class="fa-solid fa-circle-xmark mr-1"></i> Falha: ${err.message}</span>`;
+
+    function getActiveSyncUrl() {
+      const customUrl = localStorage.getItem('acf_sync_url');
+      if (customUrl && customUrl.trim() !== '') {
+        return customUrl.trim();
+      }
+      return DEFAULT_ACF_SYNC_URL.trim();
     }
-    showToast("Falha ao testar conexão.");
-  }
-}
 
-async function syncAcfKernelFromUrl() {
-  const urlInput = document.getElementById('acf-sync-url-input');
-  let url = urlInput && urlInput.value.trim() ? urlInput.value.trim() : getActiveSyncUrl();
-  
-  if (!url || url.includes('SEU_GIST')) {
-    showToast("Insira o link Raw do GitHub Gist.");
-    return;
-  }
+    function updateCopilotModeBadge() {
+      const badge = document.getElementById('copilot-mode-badge');
+      if (!badge) return;
 
-  localStorage.setItem('acf_sync_url', url);
-  showToast("Sincronizando Protocolo ACF...");
-  const statusEl = document.getElementById('api-test-status');
+      const directKey = getActiveApiKey();
+      const hasWorker = CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO");
 
-  const fetchTargets = [
-    url,
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-    `https://corsproxy.io/?${encodeURIComponent(url)}`
-  ];
+      if (directKey && directKey.startsWith('AIzaSy')) {
+        badge.innerText = "Modo: Gemini Live (Chave Local)";
+        badge.className = "text-[11px] text-emerald-300 font-mono flex items-center gap-1";
+      } else if (hasWorker) {
+        badge.innerText = "Modo: Inteligência em Tempo Real (Cloudflare Proxy)";
+        badge.className = "text-[11px] text-emerald-300 font-mono flex items-center gap-1";
+      } else {
+        badge.innerText = "Modo: Motor Local ACF (0ms)";
+        badge.className = "text-[11px] text-teal-300 font-mono";
+      }
+    }
 
-  let syncSuccess = false;
-  let loadedText = '';
+    function toggleManualKernelInput() {
+      const urlBox = document.getElementById('kernel-url-box');
+      const manualBox = document.getElementById('kernel-manual-box');
+      if (urlBox && manualBox) {
+        urlBox.classList.toggle('hidden');
+        manualBox.classList.toggle('hidden');
+        const saved = localStorage.getItem('cached_acf_kernel');
+        const txtArea = document.getElementById('acf-manual-text-input');
+        if (saved && txtArea && !txtArea.value) txtArea.value = saved;
+      }
+    }
 
-  for (const target of fetchTargets) {
-    try {
-      const response = await fetch(target);
-      if (response.ok) {
-        const text = await response.text();
-        if (text && text.length > 50 && !text.includes('<!DOCTYPE html>')) {
-          loadedText = text;
-          syncSuccess = true;
-          break;
+    function saveApiKey() {
+      const keyInput = document.getElementById('gemini-api-key-input');
+      const key = keyInput ? sanitizeApiKey(keyInput.value) : '';
+      
+      if (key) {
+        localStorage.setItem('gemini_api_key', key);
+        updateCopilotModeBadge();
+        showToast("Chave Gemini salva no navegador.");
+      } else {
+        showToast("Insira uma chave válida do Google AI Studio.");
+      }
+    }
+
+    function clearApiKey() {
+      localStorage.removeItem('gemini_api_key');
+      localStorage.removeItem('gemini_active_model');
+      localStorage.removeItem('gemini_api_version');
+      
+      const keyInput = document.getElementById('gemini-api-key-input');
+      if (keyInput) keyInput.value = '';
+      
+      const statusEl = document.getElementById('api-test-status');
+      if (statusEl) statusEl.classList.add('hidden');
+      
+      updateCopilotModeBadge();
+      showToast("Chave removida. Modo padrão reativado.");
+    }
+
+    function saveManualKernelText() {
+      const txtArea = document.getElementById('acf-manual-text-input');
+      const text = txtArea ? txtArea.value.trim() : '';
+      if (text && text.length > 20) {
+        localStorage.setItem('cached_acf_kernel', text);
+        showToast("Protocolo ACF salvo localmente com sucesso!");
+        const statusEl = document.getElementById('api-test-status');
+        if (statusEl) {
+          statusEl.classList.remove('hidden');
+          statusEl.innerHTML = `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check mr-1"></i> Protocolo ACF ativo (${text.length} caracteres).</span>`;
+        }
+      } else {
+        showToast("Cole o texto do protocolo antes de salvar.");
+      }
+    }
+
+    async function testGeminiApiConnection() {
+      const statusEl = document.getElementById('api-test-status');
+      const keyInput = document.getElementById('gemini-api-key-input');
+      const rawKey = keyInput && keyInput.value ? keyInput.value : getActiveApiKey();
+      const key = sanitizeApiKey(rawKey);
+      const hasWorker = CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO");
+
+      if (!hasWorker && (!key || key.length < 20 || !key.startsWith('AIzaSy'))) {
+        showToast("Insira sua chave Gemini ou configure a URL do Cloudflare Worker.");
+        if (statusEl) {
+          statusEl.classList.remove('hidden');
+          statusEl.innerHTML = `<span class="text-amber-700 font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Configure a URL do Worker ou insira sua chave AIzaSy.</span>`;
+        }
+        return;
+      }
+
+      if (statusEl) {
+        statusEl.classList.remove('hidden');
+        statusEl.innerHTML = `<span class="text-indigo-600 font-medium"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Validando conexão com o motor de IA...</span>`;
+      }
+
+      try {
+        const testResponse = await callGeminiLiveApi(key, "Responda apenas com: CONECTADO");
+        updateCopilotModeBadge();
+        if (statusEl) {
+          statusEl.innerHTML = `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check mr-1"></i> Conexão ativa com sucesso! (${testResponse})</span>`;
+        }
+        showToast("Conexão validada com sucesso!");
+      } catch (err) {
+        console.error("Erro na validação da API:", err);
+        if (statusEl) {
+          statusEl.innerHTML = `<span class="text-rose-600 font-bold"><i class="fa-solid fa-circle-xmark mr-1"></i> Falha: ${err.message}</span>`;
+        }
+        showToast("Falha ao testar conexão.");
+      }
+    }
+
+    async function syncAcfKernelFromUrl() {
+      const urlInput = document.getElementById('acf-sync-url-input');
+      let url = urlInput && urlInput.value.trim() ? urlInput.value.trim() : getActiveSyncUrl();
+      
+      if (!url || url.includes('SEU_GIST')) {
+        showToast("Insira o link Raw do GitHub Gist.");
+        return;
+      }
+
+      localStorage.setItem('acf_sync_url', url);
+      showToast("Sincronizando Protocolo ACF...");
+      const statusEl = document.getElementById('api-test-status');
+
+      const fetchTargets = [
+        url,
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+        `https://corsproxy.io/?${encodeURIComponent(url)}`
+      ];
+
+      let syncSuccess = false;
+      let loadedText = '';
+
+      for (const target of fetchTargets) {
+        try {
+          const response = await fetch(target);
+          if (response.ok) {
+            const text = await response.text();
+            if (text && text.length > 50 && !text.includes('<!DOCTYPE html>')) {
+              loadedText = text;
+              syncSuccess = true;
+              break;
+            }
+          }
+        } catch (e) {
+          console.warn("Tentativa de sync falhou em:", target, e);
         }
       }
-    } catch (e) {
-      console.warn("Tentativa de sync falhou em:", target, e);
-    }
-  }
 
-  if (syncSuccess) {
-    localStorage.setItem('cached_acf_kernel', loadedText);
-    showToast("Kernel ACF sincronizado com sucesso!");
-    if (statusEl) {
-      statusEl.classList.remove('hidden');
-      statusEl.innerHTML = `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check mr-1"></i> Kernel ACF atualizado (${loadedText.length} caracteres).</span>`;
-    }
-  } else {
-    showToast("Falha na sincronização. Use 'Alternar p/ Colar Texto Direto'.");
-    if (statusEl) {
-      statusEl.classList.remove('hidden');
-      statusEl.innerHTML = `<span class="text-amber-700 font-medium"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Falha no link. Use 'Alternar p/ Colar Texto Direto'.</span>`;
-    }
-    const manualBox = document.getElementById('kernel-manual-box');
-    if (manualBox && manualBox.classList.contains('hidden')) {
-      toggleManualKernelInput();
-    }
-  }
-}
-
-function toggleCopilotDrawer(initialQuery = null) {
-  const drawer = document.getElementById('ai-copilot-drawer');
-  const backdrop = document.getElementById('drawer-backdrop');
-  const panel = document.getElementById('drawer-panel');
-
-  if (!drawer || !backdrop || !panel) return;
-
-  const isHidden = panel.classList.contains('translate-x-full');
-
-  if (isHidden) {
-    updateCopilotModeBadge();
-    
-    const activeKey = getActiveApiKey();
-    const keyInput = document.getElementById('gemini-api-key-input');
-    if (keyInput && activeKey && activeKey.startsWith('AIzaSy')) {
-      keyInput.value = activeKey;
+      if (syncSuccess) {
+        localStorage.setItem('cached_acf_kernel', loadedText);
+        showToast("Kernel ACF sincronizado com sucesso!");
+        if (statusEl) {
+          statusEl.classList.remove('hidden');
+          statusEl.innerHTML = `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check mr-1"></i> Kernel ACF atualizado (${loadedText.length} caracteres).</span>`;
+        }
+      } else {
+        showToast("Falha na sincronização. Use 'Alternar p/ Colar Texto Direto'.");
+        if (statusEl) {
+          statusEl.classList.remove('hidden');
+          statusEl.innerHTML = `<span class="text-amber-700 font-medium"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Falha no link. Use 'Alternar p/ Colar Texto Direto'.</span>`;
+        }
+        const manualBox = document.getElementById('kernel-manual-box');
+        if (manualBox && manualBox.classList.contains('hidden')) {
+          toggleManualKernelInput();
+        }
+      }
     }
 
-    const activeUrl = getActiveSyncUrl();
-    const urlInput = document.getElementById('acf-sync-url-input');
-    if (urlInput && activeUrl && !activeUrl.includes('SEU_GIST')) {
-      urlInput.value = activeUrl;
+    function toggleCopilotDrawer(initialQuery = null) {
+      const drawer = document.getElementById('ai-copilot-drawer');
+      const backdrop = document.getElementById('drawer-backdrop');
+      const panel = document.getElementById('drawer-panel');
+
+      if (!drawer || !backdrop || !panel) return;
+
+      const isHidden = panel.classList.contains('translate-x-full');
+
+      if (isHidden) {
+        updateCopilotModeBadge();
+        
+        const activeKey = getActiveApiKey();
+        const keyInput = document.getElementById('gemini-api-key-input');
+        if (keyInput && activeKey && activeKey.startsWith('AIzaSy')) {
+          keyInput.value = activeKey;
+        }
+
+        const activeUrl = getActiveSyncUrl();
+        const urlInput = document.getElementById('acf-sync-url-input');
+        if (urlInput && activeUrl && !activeUrl.includes('SEU_GIST')) {
+          urlInput.value = activeUrl;
+        }
+
+        drawer.classList.remove('pointer-events-none');
+        backdrop.classList.remove('hidden');
+        setTimeout(() => {
+          backdrop.classList.remove('opacity-0');
+          panel.classList.remove('translate-x-full');
+        }, 10);
+
+        if (initialQuery) {
+          handleCopilotQuery(initialQuery);
+        }
+      } else {
+        backdrop.classList.add('opacity-0');
+        panel.classList.add('translate-x-full');
+        setTimeout(() => {
+          backdrop.classList.add('hidden');
+          drawer.classList.add('pointer-events-none');
+        }, 300);
+      }
     }
 
-    drawer.classList.remove('pointer-events-none');
-    backdrop.classList.remove('hidden');
-    setTimeout(() => {
-      backdrop.classList.remove('opacity-0');
-      panel.classList.remove('translate-x-full');
-    }, 10);
-
-    if (initialQuery) {
-      handleCopilotQuery(initialQuery);
+    function askCopilotPredefined(query) {
+      handleCopilotQuery(query);
     }
-  } else {
-    backdrop.classList.add('opacity-0');
-    panel.classList.add('translate-x-full');
-    setTimeout(() => {
-      backdrop.classList.add('hidden');
-      drawer.classList.add('pointer-events-none');
-    }, 300);
-  }
-}
 
-function askCopilotPredefined(query) {
-  handleCopilotQuery(query);
-}
+    function sendCopilotCustomQuery() {
+      const input = document.getElementById('copilot-input');
+      const query = input ? input.value.trim() : '';
+      if (!query) return;
+      input.value = '';
+      handleCopilotQuery(query);
+    }
 
-function sendCopilotCustomQuery() {
-  const input = document.getElementById('copilot-input');
-  const query = input ? input.value.trim() : '';
-  if (!query) return;
-  input.value = '';
-  handleCopilotQuery(query);
-}
+    async function handleCopilotQuery(userQuery) {
+      const container = document.getElementById('copilot-messages');
+      if (!container) return;
+      
+      const userMsg = document.createElement('div');
+      userMsg.className = "bg-slate-900 text-white p-3 rounded-xl ml-6 text-xs sm:text-sm shadow-sm leading-relaxed";
+      userMsg.innerText = userQuery;
+      container.appendChild(userMsg);
 
-async function handleCopilotQuery(userQuery) {
-  const container = document.getElementById('copilot-messages');
-  if (!container) return;
-  
-  const userMsg = document.createElement('div');
-  userMsg.className = "bg-slate-900 text-white p-3 rounded-xl ml-6 text-xs sm:text-sm shadow-sm leading-relaxed";
-  userMsg.innerText = userQuery;
-  container.appendChild(userMsg);
-
-  const aiMsg = document.createElement('div');
-  aiMsg.className = "bg-teal-50/90 p-3.5 rounded-xl mr-6 border border-teal-200 text-slate-800 text-xs sm:text-sm space-y-1.5 animate-pulse leading-relaxed";
-  aiMsg.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1 text-teal-600"></i> Processando raciocínio sob protocolo ACF...`;
-  container.appendChild(aiMsg);
-  container.scrollTop = container.scrollHeight;
-
-  const apiKey = getActiveApiKey();
-  const hasWorker = CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO");
-  const hasDirectKey = apiKey && apiKey.startsWith('AIzaSy');
-
-  if (hasWorker || hasDirectKey) {
-    try {
-      const response = await callGeminiLiveApi(apiKey, userQuery);
-      aiMsg.classList.remove('animate-pulse');
-      const originBadge = hasWorker && !hasDirectKey 
-        ? `<div class="text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-1 flex items-center gap-1"><i class="fa-solid fa-cloud text-emerald-600"></i> Resposta Gemini Live (Proxy Cloudflare)</div>`
-        : `<div class="text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-1 flex items-center gap-1"><i class="fa-solid fa-bolt text-emerald-600"></i> Resposta Gemini Live (Online ACF)</div>`;
-      aiMsg.innerHTML = originBadge + response;
+      const aiMsg = document.createElement('div');
+      aiMsg.className = "bg-teal-50/90 p-3.5 rounded-xl mr-6 border border-teal-200 text-slate-800 text-xs sm:text-sm space-y-1.5 animate-pulse leading-relaxed";
+      aiMsg.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1 text-teal-600"></i> Processando inteligência estratégica sob protocolo ACF...`;
+      container.appendChild(aiMsg);
       container.scrollTop = container.scrollHeight;
-      return;
-    } catch (err) {
-      console.warn("Falha na chamada Gemini API Live / Worker:", err);
-      aiMsg.classList.remove('animate-pulse');
-      aiMsg.innerHTML = `<div class="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 text-xs mb-2">
-        <b class="block font-bold mb-0.5"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Erro na conexão online:</b>
-        <span class="font-mono text-[11px]">${err.message || 'Falha de comunicação'}</span>
-        <div class="mt-1 text-[11px] text-slate-600 font-sans">Exibindo resposta de contingência do Motor Local ACF:</div>
-      </div>` + generateSemanticCopilotResponse(userQuery);
-      container.scrollTop = container.scrollHeight;
-      return;
+
+      const apiKey = getActiveApiKey();
+      const hasWorker = CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO");
+      const hasDirectKey = apiKey && apiKey.startsWith('AIzaSy');
+
+      if (hasWorker || hasDirectKey) {
+        try {
+          const response = await callGeminiLiveApi(apiKey, userQuery);
+          aiMsg.classList.remove('animate-pulse');
+          const originBadge = `<div class="text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-1 flex items-center gap-1"><i class="fa-solid fa-cloud text-emerald-600"></i> Resposta Gemini Live (Proxy Cloudflare)</div>`;
+          aiMsg.innerHTML = originBadge + response;
+          container.scrollTop = container.scrollHeight;
+          return;
+        } catch (err) {
+          console.warn("Falha na chamada Gemini API Live / Worker:", err);
+          aiMsg.classList.remove('animate-pulse');
+          aiMsg.innerHTML = `<div class="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 text-xs mb-2">
+            <b class="block font-bold mb-0.5"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Erro na conexão online:</b>
+            <span class="font-mono text-[11px]">${err.message || 'Falha de comunicação'}</span>
+            <div class="mt-1 text-[11px] text-slate-600 font-sans">Exibindo resposta de contingência do Motor Local ACF:</div>
+          </div>` + generateSemanticCopilotResponse(userQuery);
+          container.scrollTop = container.scrollHeight;
+          return;
+        }
+      }
+
+      setTimeout(() => {
+        aiMsg.classList.remove('animate-pulse');
+        aiMsg.innerHTML = `<div class="text-[10px] font-bold text-teal-800 uppercase tracking-wider mb-1 flex items-center gap-1"><i class="fa-solid fa-microchip text-teal-600"></i> Motor Local ACF (0ms)</div>` + generateSemanticCopilotResponse(userQuery);
+        container.scrollTop = container.scrollHeight;
+      }, 250);
     }
-  }
 
-  setTimeout(() => {
-    aiMsg.classList.remove('animate-pulse');
-    aiMsg.innerHTML = `<div class="text-[10px] font-bold text-teal-800 uppercase tracking-wider mb-1 flex items-center gap-1"><i class="fa-solid fa-microchip text-teal-600"></i> Motor Local ACF (0ms)</div>` + generateSemanticCopilotResponse(userQuery);
-    container.scrollTop = container.scrollHeight;
-  }, 250);
-}
+    /**
+     * Higienizador, Formatador Tipográfico & Renderizador de Action Chips SOTA
+     * Converte Markdown bruto em HTML nativo e transforma tags [CHIP: ...] em botões clicáveis.
+     */
+    function formatAiResponse(text) {
+      if (!text) return '';
+      
+      let clean = text
+        .replace(/\[ACF\s+[^\]]+\]/gi, '')
+        .replace(new RegExp('```[a-zA-Z]*[\\s\\S]*?```', 'gi'), '')
+        .replace(/^###\s*(.*$)/gim, '<h4 class="font-bold text-slate-900 mt-2.5 mb-1 text-xs sm:text-sm flex items-center gap-1.5"><i class="fa-solid fa-circle-chevron-right text-teal-600 text-[10px]"></i> $1</h4>')
+        .replace(/^##\s*(.*$)/gim, '<h3 class="font-extrabold text-teal-950 mt-3 mb-1 text-sm border-b border-teal-100 pb-1">$1</h3>')
+        .replace(/^#\s*(.*$)/gim, '<h2 class="font-black text-teal-950 mt-3.5 mb-1.5 text-sm sm:text-base">$1</h2>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-slate-900">$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em class="italic text-slate-700">$1</em>')
+        .replace(/^\s*[\-\*]\s+(.*$)/gim, '<li class="ml-3.5 list-disc text-slate-700 leading-relaxed my-0.5">$1</li>')
+        .replace(/\n{2,}/g, '<div class="my-2"></div>')
+        .replace(/\n/g, '<br>');
 
-/**
- * Higienizador e Formatador Tipográfico SOTA:
- * Converte marcações de Markdown bruto em HTML nativo estilizado,
- * elimina asteriscos soltos e remove tags de log ou caixas quebradas.
- */
-/**
- * Higienizador, Formatador Tipográfico & Renderizador de Action Chips SOTA
- * Converte Markdown bruto em HTML nativo e transforma tags [CHIP: ...] em botões clicáveis.
- */
-function formatAiResponse(text) {
-  if (!text) return '';
-  
-  let clean = text
-    // 1. Remove metadados brutos e tags de depuração
-    .replace(/\[ACF\s+[^\]]+\]/gi, '')
-    .replace(/
-```[a-zA-Z]*[\s\S]*?```/gi, '')
-    
-    // 2. Converte títulos de seções (#, ##, ###)
-    .replace(/^###\s*(.*$)/gim, '<h4 class="font-bold text-slate-900 mt-2.5 mb-1 text-xs sm:text-sm flex items-center gap-1.5"><i class="fa-solid fa-circle-chevron-right text-teal-600 text-[10px]"></i> $1</h4>')
-    .replace(/^##\s*(.*$)/gim, '<h3 class="font-extrabold text-teal-950 mt-3 mb-1 text-sm border-b border-teal-100 pb-1">$1</h3>')
-    .replace(/^#\s*(.*$)/gim, '<h2 class="font-black text-teal-950 mt-3.5 mb-1.5 text-sm sm:text-base">$1</h2>')
-    
-    // 3. Converte **negrito** e *itálico*
-    .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-slate-900">$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em class="italic text-slate-700">$1</em>')
-    
-    // 4. Converte listas com marcadores (- ou *)
-    .replace(/^\s*[\-\*]\s+(.*$)/gim, '<li class="ml-3.5 list-disc text-slate-700 leading-relaxed my-0.5">$1</li>')
-    
-    // 5. Normaliza quebras de linha
-    .replace(/\n{2,}/g, '<div class="my-2"></div>')
-    .replace(/\n/g, '<br>');
+      // Parser de Action Chips dinâmicos [CHIP: Texto]
+      const chipRegex = /\[CHIP:\s*([^\]]+)\]/gi;
+      const chips = [];
+      let match;
 
-  // 6. RENDERIZADOR DE ACTION CHIPS DINÂMICOS
-  // Transforma [CHIP: Texto da Ação] em botões clicáveis
-  const chipRegex = /\[CHIP:\s*([^\]]+)\]/gi;
-  const chips = [];
-  let match;
+      while ((match = chipRegex.exec(clean)) !== null) {
+        chips.push(match[1].trim());
+      }
 
-  while ((match = chipRegex.exec(clean)) !== null) {
-    chips.push(match[1].trim());
-  }
+      clean = clean.replace(chipRegex, '');
 
-  // Remove as tags de chip do texto principal
-  clean = clean.replace(chipRegex, '');
+      if (chips.length > 0) {
+        let chipsHtml = `
+          <div class="mt-3.5 pt-2.5 border-t border-teal-200/60">
+            <span class="text-[10px] font-bold text-teal-900 uppercase tracking-wider block mb-1.5 flex items-center gap-1">
+              <i class="fa-solid fa-wand-magic-sparkles text-teal-600 text-[9px]"></i> Sugestões de Aprofundamento:
+            </span>
+            <div class="flex flex-wrap gap-1.5">
+        `;
 
-  // Se houver chips gerados pela IA, monta o contêiner interativo
-  if (chips.length > 0) {
-    let chipsHtml = `
-      <div class="mt-3.5 pt-2.5 border-t border-teal-200/60">
-        <span class="text-[10px] font-bold text-teal-900 uppercase tracking-wider block mb-1.5 flex items-center gap-1">
-          <i class="fa-solid fa-wand-magic-sparkles text-teal-600 text-[9px]"></i> Sugestões de Aprofundamento:
-        </span>
-        <div class="flex flex-wrap gap-1.5">
-    `;
+        chips.forEach(chipText => {
+          const safeQuery = chipText.replace(/"/g, '&quot;').replace(/'/g, "\\'");
+          chipsHtml += `
+            <button onclick="askCopilotPredefined('${safeQuery}')" 
+                    class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-teal-600 text-teal-900 hover:text-white border border-teal-300 hover:border-teal-600 rounded-lg text-xs font-semibold shadow-2xs transition-all text-left">
+              <i class="fa-solid fa-arrow-turn-down text-[9px] text-teal-600 hover:text-white rotate-[-90deg]"></i>
+              <span>${chipText}</span>
+            </button>
+          `;
+        });
 
-    chips.forEach(chipText => {
-      // Escapa aspas para evitar quebra no onclick
-      const safeQuery = chipText.replace(/"/g, '&quot;').replace(/'/g, "\\'");
-      chipsHtml += `
-        <button onclick="askCopilotPredefined('${safeQuery}')" 
-                class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-teal-600 text-teal-900 hover:text-white border border-teal-300 hover:border-teal-600 rounded-lg text-xs font-semibold shadow-2xs transition-all text-left">
-          <i class="fa-solid fa-arrow-turn-down text-[9px] text-teal-600 hover:text-white rotate-[-90deg]"></i>
-          <span>${chipText}</span>
-        </button>
-      `;
-    });
+        chipsHtml += `</div></div>`;
+        clean += chipsHtml;
+      }
 
-    chipsHtml += `</div></div>`;
-    clean += chipsHtml;
-  }
+      return clean.trim();
+    }
 
-  return clean.trim();
-}
-
-/**
- * Executa a requisição com o Cloudflare Worker e aplica a formatação
- */
-async function callGeminiLiveApi(key, query) {
-  const cachedAcf = localStorage.getItem('cached_acf_kernel');
-  const acfSystemInstruction = cachedAcf || `=== PROTOCOLO EXECUTIVO: HUB DE ENGENHARIA DE INTEGRAÇÃO ===
+    /**
+     * Executa a requisição com o Cloudflare Worker e aplica a formatação
+     */
+    async function callGeminiLiveApi(key, query) {
+      const cachedAcf = localStorage.getItem('cached_acf_kernel');
+      const acfSystemInstruction = cachedAcf || `=== PROTOCOLO EXECUTIVO: HUB DE ENGENHARIA DE INTEGRAÇÃO ===
 [LOCALIZAÇÃO]: Bairro Castelo & Pampulha — Belo Horizonte / MG
 [CORPO TÉCNICO]: Doutorado em Fonoaudiologia (CAA/TAV/Bimodal) + Especialista em Neuroaprendizagem e Psicopedagogia (PDI/LBI).
 
 DIRETRIZES DE RESPOSTA E CONTRATO DE SAÍDA:
-1. CONCISÃO E PROFUNDIDADE: Responda de forma direta, executiva e fluida em 3 a 4 tópicos objetivos (máximo 180 a 250 palavras). Nunca interrompa o texto no meio.
+1. CONCISÃO E PROFUNDIDADE: Responda de forma direta, executiva e fluida em 3 a 4 tópicos objetivos (máximo 140 a 180 palavras). Nunca interrompa o texto no meio.
 2. ANCORAGEM NO HUB:
    - "Inclusion Audit" no Hub é a Auditoria de Conformidade e Blindagem Pedagógica do PDI escolar perante a Lei Brasileira de Inclusão (LBI nº 13.146/2015) para escolas particulares do Castelo. NÃO confunda com ensaios clínicos ou auditorias farmacêuticas.
    - "UTI de Transição": Protocolo intensivo de 90 dias com desmame rápido.
    - "CAA & TAV": Comunicação Aumentativa/Alternativa (TD Snap/PODD) e Treinamento Auditivo-Verbal (Implante Coclear/Bimodal).
    - "Fator R": 6% no Simples Nacional com economia de 9,5% sobre faturamento.
-3. FORMATAÇÃO: Formate em tópicos limpos com títulos claros. Não use diagramas ASCII quebrados nem tags brutas de sistema.`;
+3. ACTION CHIPS: Ao final, anexe 2 a 3 sugestões de aprofundamento usando a sintaxe [CHIP: Tópico].`;
 
-  const contextualQuery = `[Contexto: Hub de Neurodesenvolvimento Castelo/Pampulha BH - Fonoaudiologia & Psicopedagogia]\nPergunta: ${query}`;
+      const contextualQuery = `[Contexto: Hub de Neurodesenvolvimento Castelo/Pampulha BH - Fonoaudiologia & Psicopedagogia]\nPergunta: ${query}`;
 
-  const payload = {
-    systemInstruction: {
-      parts: [{ text: acfSystemInstruction }]
-    },
-    contents: [
-      { role: "user", parts: [{ text: contextualQuery }] }
-    ],
-    generationConfig: {
-      temperature: 0.4,
-      maxOutputTokens: 8192 // Padrão SOTA: Teto nativo pleno (Zero Truncation)
+      const payload = {
+        systemInstruction: {
+          parts: [{ text: acfSystemInstruction }]
+        },
+        contents: [
+          { role: "user", parts: [{ text: contextualQuery }] }
+        ],
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 8192
+        }
+      };
+
+      // 1. Chamada prioritária via Cloudflare Worker
+      if (CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO")) {
+        const workerRes = await fetch(CLOUDFLARE_WORKER_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "gemini-3.6-flash",
+            apiVersion: "v1beta",
+            payload: payload
+          })
+        });
+
+        if (!workerRes.ok) {
+          const errData = await workerRes.json().catch(() => ({}));
+          throw new Error(`[Cloudflare Worker] ${errData.error || `HTTP ${workerRes.status}`}`);
+        }
+
+        const data = await workerRes.json();
+        const parts = data.candidates?.[0]?.content?.parts || [];
+        const textPart = parts.find(p => p.text && !p.thought) || parts[0];
+        return formatAiResponse(textPart ? textPart.text : "Resposta processada com sucesso.");
+      }
+
+      // 2. Chamada direta de contingência caso exista chave manual
+      const sanitizedKey = sanitizeApiKey(key);
+      if (sanitizedKey && sanitizedKey.startsWith('AIzaSy')) {
+        const directRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${encodeURIComponent(sanitizedKey)}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": sanitizedKey
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!directRes.ok) {
+          const errData = await directRes.json().catch(() => ({}));
+          throw new Error(`[Direct API] ${errData.error?.message || `HTTP ${directRes.status}`}`);
+        }
+
+        const data = await directRes.json();
+        const parts = data.candidates?.[0]?.content?.parts || [];
+        const textPart = parts.find(p => p.text && !p.thought) || parts[0];
+        return formatAiResponse(textPart ? textPart.text : "Resposta processada com sucesso.");
+      }
+
+      throw new Error("Nenhum canal ativo de IA configurado.");
     }
-  };
 
-  // 1. Chamada prioritária via Cloudflare Worker
-  if (CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO")) {
-    const workerRes = await fetch(CLOUDFLARE_WORKER_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "gemini-3.6-flash",
-        apiVersion: "v1beta",
-        payload: payload
-      })
-    });
-
-    if (!workerRes.ok) {
-      const errData = await workerRes.json().catch(() => ({}));
-      throw new Error(`[Cloudflare Worker] ${errData.error || `HTTP ${workerRes.status}`}`);
-    }
-
-    const data = await workerRes.json();
-    const parts = data.candidates?.[0]?.content?.parts || [];
-    const textPart = parts.find(p => p.text && !p.thought) || parts[0];
-    return formatAiResponse(textPart ? textPart.text : "Resposta processada com sucesso.");
-  }
-
-  // 2. Chamada direta de contingência caso exista chave manual
-  const sanitizedKey = sanitizeApiKey(key);
-  if (sanitizedKey && sanitizedKey.startsWith('AIzaSy')) {
-    const directRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${encodeURIComponent(sanitizedKey)}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": sanitizedKey
-      },
-      body: JSON.stringify(payload)
-    });
-
-    if (!directRes.ok) {
-      const errData = await directRes.json().catch(() => ({}));
-      throw new Error(`[Direct API] ${errData.error?.message || `HTTP ${directRes.status}`}`);
-    }
-
-    const data = await directRes.json();
-    const parts = data.candidates?.[0]?.content?.parts || [];
-    const textPart = parts.find(p => p.text && !p.thought) || parts[0];
-    return formatAiResponse(textPart ? textPart.text : "Resposta processada com sucesso.");
-  }
-
-  throw new Error("Nenhum canal ativo de IA configurado.");
-}
 
     function generateSemanticCopilotResponse(query) {
       const q = query.toLowerCase();
