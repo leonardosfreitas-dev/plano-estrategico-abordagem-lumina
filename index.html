@@ -4195,12 +4195,9 @@
 /* MÓDULO DE INTELIGÊNCIA ARTIFICIAL: COPILOT DUAL-CORE (LIVE API + ACF)      */
 /* ========================================================================= */
 
-// 1. CREDENCIAIS E LINKS PADRÃO (EMBUTIDOS DIRETAMENTE NO CÓDIGO)
-// Cole sua chave e URL padrão entre as aspas abaixo:
-const DEFAULT_GEMINI_API_KEY = "AQ.Ab8RN6JmTgxCp8XH4Y-QwzSsQsZDHcTlWwsAi8efAKMrObmwJw"; 
-const DEFAULT_ACF_SYNC_URL = "https://gist.githubusercontent.com/leonardosfreitas-dev/7ea3f4d47d361b40d8e225d984ba0d11/raw/kernel_protocolo_acf_mini.txt";
+const DEFAULT_GEMINI_API_KEY = ""; 
+const DEFAULT_ACF_SYNC_URL = "https://gist.githubusercontent.com/SEU_USUARIO/SEU_GIST/raw/protocolo_acf.txt";
 
-// 2. FUNÇÕES DE RECUPERAÇÃO COM PREVALÊNCIA (LOCALSTORAGE > PADRÃO)
 function sanitizeApiKey(rawKey) {
   if (!rawKey) return '';
   return rawKey.trim().replace(/^["']|["']$/g, '');
@@ -4225,10 +4222,15 @@ function getActiveSyncUrl() {
 function saveApiKey() {
   const keyInput = document.getElementById('gemini-api-key-input');
   const key = keyInput ? sanitizeApiKey(keyInput.value) : '';
+  
+  if (!key || key.length < 20 || !key.startsWith('AIzaSy')) {
+    showToast("Atenção: A chave Gemini deve começar com 'AIzaSy' e ter ~39 caracteres.");
+  }
+  
   if (key) {
     localStorage.setItem('gemini_api_key', key);
     updateCopilotModeBadge();
-    showToast("Chave Gemini API salva no navegador. Clique em 'Testar' para validar.");
+    showToast("Chave Gemini salva no navegador. Clique em 'Testar' para validar.");
   } else {
     showToast("Insira uma chave válida do Google AI Studio.");
   }
@@ -4240,15 +4242,13 @@ function clearApiKey() {
   localStorage.removeItem('gemini_api_version');
   
   const keyInput = document.getElementById('gemini-api-key-input');
-  if (keyInput) {
-    keyInput.value = DEFAULT_GEMINI_API_KEY !== "SUA_CHAVE_GEMINI_AQUI" ? DEFAULT_GEMINI_API_KEY : '';
-  }
+  if (keyInput) keyInput.value = '';
   
   const statusEl = document.getElementById('api-test-status');
   if (statusEl) statusEl.classList.add('hidden');
   
   updateCopilotModeBadge();
-  showToast("Personalização removida. Retornando às configurações padrão.");
+  showToast("Chave removida. Modo Local ACF reativado.");
 }
 
 function toggleManualKernelInput() {
@@ -4279,35 +4279,53 @@ function saveManualKernelText() {
   }
 }
 
+/**
+ * Validação de conexão com suporte a cabeçalho x-goog-api-key e fallback dinâmico
+ */
 async function testGeminiApiConnection() {
   const keyInput = document.getElementById('gemini-api-key-input');
   const rawKey = keyInput && keyInput.value ? keyInput.value : getActiveApiKey();
   const key = sanitizeApiKey(rawKey);
   const statusEl = document.getElementById('api-test-status');
 
-  if (!key || key === "SUA_CHAVE_GEMINI_AQUI") {
-    showToast("Insira ou configure uma chave Gemini API válida primeiro.");
+  if (!key || key === "SUA_CHAVE_GEMINI_AQUI" || key.length < 20) {
+    showToast("Cole sua chave Gemini (começando com AIzaSy) no campo acima.");
+    if (statusEl) {
+      statusEl.classList.remove('hidden');
+      statusEl.innerHTML = `<span class="text-amber-700 font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Cole a chave que começa com 'AIzaSy...' no campo acima.</span>`;
+    }
     return;
   }
 
   if (statusEl) {
     statusEl.classList.remove('hidden');
-    statusEl.innerHTML = `<span class="text-indigo-600 font-medium"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Consultando catálogo de modelos liberados no Google AI Studio...</span>`;
+    statusEl.innerHTML = `<span class="text-indigo-600 font-medium"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Validando credenciais e descobrindo modelos ativos...</span>`;
   }
 
   try {
+    const encodedKey = encodeURIComponent(key);
+    const authHeaders = {
+      "Content-Type": "application/json",
+      "x-goog-api-key": key
+    };
+
+    // 1. Consulta dinâmica de modelos
     let apiVersion = 'v1beta';
-    let listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+    let listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodedKey}`, {
+      headers: authHeaders
+    });
     
     if (!listRes.ok) {
       apiVersion = 'v1';
-      listRes = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${key}`);
+      listRes = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${encodedKey}`, {
+        headers: authHeaders
+      });
     }
 
     if (!listRes.ok) {
       const errData = await listRes.json().catch(() => ({}));
-      const msg = errData.error?.message || `Erro HTTP ${listRes.status}`;
-      throw new Error(`Validação da chave falhou: ${msg}`);
+      const msg = errData.error?.message || `HTTP ${listRes.status}`;
+      throw new Error(`Validação falhou: ${msg}`);
     }
 
     const listData = await listRes.json();
@@ -4316,7 +4334,7 @@ async function testGeminiApiConnection() {
       .map(m => m.name.replace(/^models\//, ''));
 
     if (availableModels.length === 0) {
-      throw new Error("Nenhum modelo compatível com geração de conteúdo foi encontrado.");
+      throw new Error("Nenhum modelo habilitado para generateContent nesta chave.");
     }
 
     const priorityPreferences = [
@@ -4329,13 +4347,7 @@ async function testGeminiApiConnection() {
       'gemini-flash-latest',
       'gemini-1.5-flash-latest',
       'gemini-1.5-flash-002',
-      'gemini-1.5-flash-001',
-      'gemini-1.5-flash',
-      'gemini-3.6-pro',
-      'gemini-3-pro',
-      'gemini-2.0-pro-exp',
-      'gemini-1.5-pro-latest',
-      'gemini-1.5-pro'
+      'gemini-1.5-flash'
     ];
 
     let sortedCandidates = [];
@@ -4354,6 +4366,7 @@ async function testGeminiApiConnection() {
     let workingVersion = apiVersion;
     let lastError = null;
 
+    // 2. Loop de teste ativo com chamada real de inferência
     for (const modelCandidate of sortedCandidates) {
       if (statusEl) {
         statusEl.innerHTML = `<span class="text-indigo-600 font-medium"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Testando modelo '<b>${modelCandidate}</b>'...</span>`;
@@ -4363,14 +4376,14 @@ async function testGeminiApiConnection() {
       
       for (const ver of versionsToTest) {
         try {
-          const testUrl = `https://generativelanguage.googleapis.com/${ver}/models/${modelCandidate}:generateContent?key=${key}`;
+          const testUrl = `https://generativelanguage.googleapis.com/${ver}/models/${modelCandidate}:generateContent?key=${encodedKey}`;
           const testPayload = {
-            contents: [{ role: "user", parts: [{ text: "Responda em uma única palavra: CONECTADO" }] }]
+            contents: [{ role: "user", parts: [{ text: "Responda apenas: CONECTADO" }] }]
           };
 
           const testRes = await fetch(testUrl, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: authHeaders,
             body: JSON.stringify(testPayload)
           });
 
@@ -4391,9 +4404,10 @@ async function testGeminiApiConnection() {
     }
 
     if (!workingModel) {
-      throw new Error(`Nenhum modelo testado respondeu com sucesso. Último erro: ${lastError}`);
+      throw new Error(`Nenhum modelo testado respondeu. Último erro: ${lastError}`);
     }
 
+    // 3. Persistência de sucesso
     localStorage.setItem('gemini_api_key', key);
     localStorage.setItem('gemini_active_model', workingModel);
     localStorage.setItem('gemini_api_version', workingVersion);
@@ -4416,17 +4430,12 @@ async function syncAcfKernelFromUrl() {
   const urlInput = document.getElementById('acf-sync-url-input');
   let url = urlInput && urlInput.value.trim() ? urlInput.value.trim() : getActiveSyncUrl();
   
-  if (!url || url === "https://docs.google.com/document/d/SEU_ID_AQUI/export?format=txt") {
-    showToast("Insira ou configure o link do documento primeiro.");
+  if (!url || url.includes('SEU_GIST')) {
+    showToast("Insira o link Raw do GitHub Gist.");
     return;
   }
 
   localStorage.setItem('acf_sync_url', url);
-
-  const docIdMatch = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
-  if (docIdMatch && docIdMatch[1]) {
-    url = `https://docs.google.com/document/d/${docIdMatch[1]}/export?format=txt`;
-  }
 
   showToast("Sincronizando Protocolo ACF...");
   const statusEl = document.getElementById('api-test-status');
@@ -4464,10 +4473,10 @@ async function syncAcfKernelFromUrl() {
       statusEl.innerHTML = `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check mr-1"></i> Kernel ACF atualizado (${loadedText.length} caracteres).</span>`;
     }
   } else {
-    showToast("Bloqueio de CORS no Drive. Clique em 'Colar Texto Direto'.");
+    showToast("Falha na sincronização. Use 'Alternar p/ Colar Texto Direto'.");
     if (statusEl) {
       statusEl.classList.remove('hidden');
-      statusEl.innerHTML = `<span class="text-amber-700 font-medium"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Drive bloqueou CORS. Use 'Alternar p/ Colar Texto Direto'.</span>`;
+      statusEl.innerHTML = `<span class="text-amber-700 font-medium"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Falha no link. Use 'Alternar p/ Colar Texto Direto'.</span>`;
     }
     const manualBox = document.getElementById('kernel-manual-box');
     if (manualBox && manualBox.classList.contains('hidden')) {
@@ -4480,7 +4489,7 @@ function updateCopilotModeBadge() {
   const key = getActiveApiKey();
   const badge = document.getElementById('copilot-mode-badge');
   if (!badge) return;
-  if (key && key !== "SUA_CHAVE_GEMINI_AQUI") {
+  if (key && key.startsWith('AIzaSy')) {
     const model = localStorage.getItem('gemini_active_model') || 'gemini-live';
     badge.innerText = `Modo: Gemini Live (${model})`;
     badge.className = "text-[11px] text-emerald-300 font-mono flex items-center gap-1";
@@ -4502,13 +4511,13 @@ function toggleCopilotDrawer(initialQuery = null) {
     
     const activeKey = getActiveApiKey();
     const keyInput = document.getElementById('gemini-api-key-input');
-    if (keyInput && activeKey && activeKey !== "SUA_CHAVE_GEMINI_AQUI") {
+    if (keyInput && activeKey && activeKey.startsWith('AIzaSy')) {
       keyInput.value = activeKey;
     }
 
     const activeUrl = getActiveSyncUrl();
     const urlInput = document.getElementById('acf-sync-url-input');
-    if (urlInput && activeUrl && !activeUrl.includes('SEU_ID_AQUI')) {
+    if (urlInput && activeUrl && !activeUrl.includes('SEU_GIST')) {
       urlInput.value = activeUrl;
     }
 
@@ -4561,7 +4570,7 @@ async function handleCopilotQuery(userQuery) {
 
   const apiKey = getActiveApiKey();
 
-  if (apiKey && apiKey !== "SUA_CHAVE_GEMINI_AQUI") {
+  if (apiKey && apiKey.startsWith('AIzaSy')) {
     try {
       const response = await callGeminiLiveApi(apiKey, userQuery);
       aiMsg.classList.remove('animate-pulse');
@@ -4601,7 +4610,7 @@ async function callGeminiLiveApi(key, query) {
   let apiVersion = localStorage.getItem('gemini_api_version') || 'v1beta';
 
   const makeRequest = async (modelName, version) => {
-    const url = `https://generativelanguage.googleapis.com/${version}/models/${modelName}:generateContent?key=${sanitizedKey}`;
+    const url = `https://generativelanguage.googleapis.com/${version}/models/${modelName}:generateContent?key=${encodeURIComponent(sanitizedKey)}`;
     const payload = {
       systemInstruction: {
         parts: [{ text: acfSystemInstruction }]
@@ -4616,7 +4625,10 @@ async function callGeminiLiveApi(key, query) {
 
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": sanitizedKey
+      },
       body: JSON.stringify(payload)
     });
 
@@ -4638,11 +4650,15 @@ async function callGeminiLiveApi(key, query) {
     console.warn(`Tentativa direta com ${activeModel} falhou, descobrindo modelos ativos...`, firstErr);
 
     try {
-      let listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${sanitizedKey}`);
+      let listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(sanitizedKey)}`, {
+        headers: { "x-goog-api-key": sanitizedKey }
+      });
       let fallbackVersion = 'v1beta';
       if (!listRes.ok) {
         fallbackVersion = 'v1';
-        listRes = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${sanitizedKey}`);
+        listRes = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${encodeURIComponent(sanitizedKey)}`, {
+          headers: { "x-goog-api-key": sanitizedKey }
+        });
       }
 
       if (listRes.ok) {
