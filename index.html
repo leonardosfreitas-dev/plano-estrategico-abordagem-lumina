@@ -4426,10 +4426,14 @@
         } catch (err) {
           console.warn("Falha na chamada Gemini API Live / Worker:", err);
           aiMsg.classList.remove('animate-pulse');
-          aiMsg.innerHTML = `<div class="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 text-xs mb-2">
-            <b class="block font-bold mb-0.5"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Erro na conexão online:</b>
-            <span class="font-mono text-[11px]">${err.message || 'Falha de comunicação'}</span>
-            <div class="mt-1 text-[11px] text-slate-600 font-sans">Exibindo resposta de contingência do Motor Local ACF:</div>
+          
+          // Extrai mensagem limpa sem vazar [object Object]
+          const cleanErrMsg = typeof err.message === 'string' ? err.message : 'Instabilidade momentânea no gateway de IA';
+
+          aiMsg.innerHTML = `<div class="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-xs mb-2">
+            <b class="block font-bold mb-0.5 flex items-center gap-1"><i class="fa-solid fa-triangle-exclamation text-amber-600"></i> Aviso de Conexão Online:</b>
+            <span class="text-[11px] leading-relaxed text-slate-700">${cleanErrMsg}</span>
+            <div class="mt-1 text-[11px] text-teal-800 font-semibold flex items-center gap-1"><i class="fa-solid fa-shield-halved text-teal-600"></i> Exibindo inteligência do Motor Local ACF (0ms):</div>
           </div>` + generateSemanticCopilotResponse(userQuery);
           container.scrollTop = container.scrollHeight;
           return;
@@ -4452,7 +4456,8 @@
       
       let clean = text
         .replace(/\[ACF\s+[^\]]+\]/gi, '')
-        .replace(new RegExp('```[a-zA-Z]*[\\s\\S]*?```', 'gi'), '')
+        .replace(new RegExp('
+```[a-zA-Z]*[\\s\\S]*?```', 'gi'), '')
         .replace(/^###\s*(.*$)/gim, '<h4 class="font-bold text-slate-900 mt-2.5 mb-1 text-xs sm:text-sm flex items-center gap-1.5"><i class="fa-solid fa-circle-chevron-right text-teal-600 text-[10px]"></i> $1</h4>')
         .replace(/^##\s*(.*$)/gim, '<h3 class="font-extrabold text-teal-950 mt-3 mb-1 text-sm border-b border-teal-100 pb-1">$1</h3>')
         .replace(/^#\s*(.*$)/gim, '<h2 class="font-black text-teal-950 mt-3.5 mb-1.5 text-sm sm:text-base">$1</h2>')
@@ -4501,7 +4506,7 @@
     }
 
     /**
-     * Executa a requisição com o Cloudflare Worker e aplica a formatação
+     * Executa a requisição com o Cloudflare Worker com Auto-Retry inteligente
      */
     async function callGeminiLiveApi(key, query) {
       const cachedAcf = localStorage.getItem('cached_acf_kernel');
@@ -4533,33 +4538,54 @@ DIRETRIZES DE RESPOSTA E CONTRATO DE SAÍDA:
         }
       };
 
-      // 1. Chamada prioritária via Cloudflare Worker
+      // 1. Chamada prioritária via Cloudflare Worker com auto-retry
       if (CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO")) {
-        const workerRes = await fetch(CLOUDFLARE_WORKER_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: "gemini-3.6-flash",
-            apiVersion: "v1beta",
-            payload: payload
-          })
-        });
+        let lastError = null;
 
-        if (!workerRes.ok) {
-          const errData = await workerRes.json().catch(() => ({}));
-          throw new Error(`[Cloudflare Worker] ${errData.error || `HTTP ${workerRes.status}`}`);
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            const workerRes = await fetch(CLOUDFLARE_WORKER_URL, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                model: "gemini-2.5-flash",
+                apiVersion: "v1beta",
+                payload: payload
+              })
+            });
+
+            const data = await workerRes.json().catch(() => ({}));
+
+            if (workerRes.ok && data.candidates && data.candidates.length > 0) {
+              const parts = data.candidates[0]?.content?.parts || [];
+              const textPart = parts.find(p => p.text && !p.thought) || parts[0];
+              return formatAiResponse(textPart ? textPart.text : "Resposta processada com sucesso.");
+            }
+
+            // Extrai a mensagem de erro formatada
+            const msg = data.error?.message || 
+                        (typeof data.error === 'string' ? data.error : null) || 
+                        data.message || 
+                        `HTTP ${workerRes.status}`;
+            lastError = new Error(msg);
+
+            // Se for a primeira tentativa, aguarda 800ms antes da segunda
+            if (attempt === 1) {
+              await new Promise(r => setTimeout(r, 800));
+            }
+          } catch (netErr) {
+            lastError = netErr;
+            if (attempt === 1) await new Promise(r => setTimeout(r, 800));
+          }
         }
 
-        const data = await workerRes.json();
-        const parts = data.candidates?.[0]?.content?.parts || [];
-        const textPart = parts.find(p => p.text && !p.thought) || parts[0];
-        return formatAiResponse(textPart ? textPart.text : "Resposta processada com sucesso.");
+        throw lastError || new Error("Falha ao comunicar com o Cloudflare Worker.");
       }
 
       // 2. Chamada direta de contingência caso exista chave manual
       const sanitizedKey = sanitizeApiKey(key);
       if (sanitizedKey && sanitizedKey.startsWith('AIzaSy')) {
-        const directRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${encodeURIComponent(sanitizedKey)}`, {
+        const directRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(sanitizedKey)}`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -4568,12 +4594,13 @@ DIRETRIZES DE RESPOSTA E CONTRATO DE SAÍDA:
           body: JSON.stringify(payload)
         });
 
+        const data = await directRes.json().catch(() => ({}));
+
         if (!directRes.ok) {
-          const errData = await directRes.json().catch(() => ({}));
-          throw new Error(`[Direct API] ${errData.error?.message || `HTTP ${directRes.status}`}`);
+          const detailedError = data.error?.message || (typeof data.error === 'string' ? data.error : `HTTP ${directRes.status}`);
+          throw new Error(`[Direct API] ${detailedError}`);
         }
 
-        const data = await directRes.json();
         const parts = data.candidates?.[0]?.content?.parts || [];
         const textPart = parts.find(p => p.text && !p.thought) || parts[0];
         return formatAiResponse(textPart ? textPart.text : "Resposta processada com sucesso.");
