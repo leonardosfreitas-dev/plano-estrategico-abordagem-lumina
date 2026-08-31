@@ -4450,30 +4450,74 @@ async function handleCopilotQuery(userQuery) {
  * Converte marcações de Markdown bruto em HTML nativo estilizado,
  * elimina asteriscos soltos e remove tags de log ou caixas quebradas.
  */
+/**
+ * Higienizador, Formatador Tipográfico & Renderizador de Action Chips SOTA
+ * Converte Markdown bruto em HTML nativo e transforma tags [CHIP: ...] em botões clicáveis.
+ */
 function formatAiResponse(text) {
   if (!text) return '';
   
   let clean = text
-    // 1. Remove tags brutas de sistema e metadados de depuração
+    // 1. Remove metadados brutos e tags de depuração
     .replace(/\[ACF\s+[^\]]+\]/gi, '')
-    .replace(/```[a-zA-Z]*[\s\S]*?```/gi, '')
+    .replace(/
+```[a-zA-Z]*[\s\S]*?```/gi, '')
     
-    // 2. Converte títulos de seções (#, ##, ###) em títulos visuais elegantes
+    // 2. Converte títulos de seções (#, ##, ###)
     .replace(/^###\s*(.*$)/gim, '<h4 class="font-bold text-slate-900 mt-2.5 mb-1 text-xs sm:text-sm flex items-center gap-1.5"><i class="fa-solid fa-circle-chevron-right text-teal-600 text-[10px]"></i> $1</h4>')
     .replace(/^##\s*(.*$)/gim, '<h3 class="font-extrabold text-teal-950 mt-3 mb-1 text-sm border-b border-teal-100 pb-1">$1</h3>')
     .replace(/^#\s*(.*$)/gim, '<h2 class="font-black text-teal-950 mt-3.5 mb-1.5 text-sm sm:text-base">$1</h2>')
     
-    // 3. Converte **negrito** e *itálico* em tags HTML nativas
+    // 3. Converte **negrito** e *itálico*
     .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-slate-900">$1</strong>')
     .replace(/\*(.*?)\*/g, '<em class="italic text-slate-700">$1</em>')
     
-    // 4. Converte listas com marcadores (- ou *) em itens limpos com recuo
+    // 4. Converte listas com marcadores (- ou *)
     .replace(/^\s*[\-\*]\s+(.*$)/gim, '<li class="ml-3.5 list-disc text-slate-700 leading-relaxed my-0.5">$1</li>')
     
-    // 5. Normaliza quebras de linha e espaçamentos
+    // 5. Normaliza quebras de linha
     .replace(/\n{2,}/g, '<div class="my-2"></div>')
     .replace(/\n/g, '<br>');
-    
+
+  // 6. RENDERIZADOR DE ACTION CHIPS DINÂMICOS
+  // Transforma [CHIP: Texto da Ação] em botões clicáveis
+  const chipRegex = /\[CHIP:\s*([^\]]+)\]/gi;
+  const chips = [];
+  let match;
+
+  while ((match = chipRegex.exec(clean)) !== null) {
+    chips.push(match[1].trim());
+  }
+
+  // Remove as tags de chip do texto principal
+  clean = clean.replace(chipRegex, '');
+
+  // Se houver chips gerados pela IA, monta o contêiner interativo
+  if (chips.length > 0) {
+    let chipsHtml = `
+      <div class="mt-3.5 pt-2.5 border-t border-teal-200/60">
+        <span class="text-[10px] font-bold text-teal-900 uppercase tracking-wider block mb-1.5 flex items-center gap-1">
+          <i class="fa-solid fa-wand-magic-sparkles text-teal-600 text-[9px]"></i> Sugestões de Aprofundamento:
+        </span>
+        <div class="flex flex-wrap gap-1.5">
+    `;
+
+    chips.forEach(chipText => {
+      // Escapa aspas para evitar quebra no onclick
+      const safeQuery = chipText.replace(/"/g, '&quot;').replace(/'/g, "\\'");
+      chipsHtml += `
+        <button onclick="askCopilotPredefined('${safeQuery}')" 
+                class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-teal-600 text-teal-900 hover:text-white border border-teal-300 hover:border-teal-600 rounded-lg text-xs font-semibold shadow-2xs transition-all text-left">
+          <i class="fa-solid fa-arrow-turn-down text-[9px] text-teal-600 hover:text-white rotate-[-90deg]"></i>
+          <span>${chipText}</span>
+        </button>
+      `;
+    });
+
+    chipsHtml += `</div></div>`;
+    clean += chipsHtml;
+  }
+
   return clean.trim();
 }
 
