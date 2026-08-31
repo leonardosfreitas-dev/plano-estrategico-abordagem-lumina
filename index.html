@@ -692,10 +692,10 @@
           <table class="w-full text-left text-xs sm:text-sm text-slate-800 border-collapse" id="table-channels">
             <thead class="bg-slate-100 text-slate-900 font-bold border-b border-slate-200 text-xs uppercase tracking-wider select-none">
               <tr>
-                <th class="p-3.5 cursor-pointer hover:bg-slate-200 transition w-12" onclick="sortMatrixTable('id')">
+                <th class="p-3.5 cursor-pointer hover:bg-slate-200 transition w-14 text-center" onclick="sortMatrixTable('id')">
                   # <i class="fa-solid fa-sort text-[10px] ml-1"></i>
                 </th>
-                <th class="p-3.5 cursor-pointer hover:bg-slate-200 transition w-24" onclick="sortMatrixTable('onda')">
+                <th class="p-3.5 cursor-pointer hover:bg-slate-200 transition w-28 min-w-[105px] text-center whitespace-nowrap" onclick="sortMatrixTable('onda')">
                   Onda <i class="fa-solid fa-sort text-[10px] ml-1"></i>
                 </th>
                 <th class="p-3.5 cursor-pointer hover:bg-slate-200 transition min-w-[200px]" onclick="sortMatrixTable('publico')">
@@ -704,19 +704,19 @@
                 <th class="p-3.5 min-w-[240px]">
                   Dor Latente & Sintoma em Campo
                 </th>
-                <th class="p-3.5 cursor-pointer hover:bg-slate-200 transition w-28 text-center" onclick="sortMatrixTable('tipo')">
+                <th class="p-3.5 cursor-pointer hover:bg-slate-200 transition w-28 text-center whitespace-nowrap" onclick="sortMatrixTable('tipo')">
                   Ambiente <i class="fa-solid fa-sort text-[10px] ml-1"></i>
                 </th>
-                <th class="p-3.5 cursor-pointer hover:bg-slate-200 transition w-36 text-center" onclick="sortMatrixTable('especialidade')">
+                <th class="p-3.5 cursor-pointer hover:bg-slate-200 transition w-36 text-center whitespace-nowrap" onclick="sortMatrixTable('especialidade')">
                   Especialidade <i class="fa-solid fa-sort text-[10px] ml-1"></i>
                 </th>
-                <th class="p-3.5 cursor-pointer hover:bg-slate-200 transition min-w-[140px]" onclick="sortMatrixTable('ltvScore')">
+                <th class="p-3.5 cursor-pointer hover:bg-slate-200 transition min-w-[140px] whitespace-nowrap" onclick="sortMatrixTable('ltvScore')">
                   LTV & Retorno <i class="fa-solid fa-sort text-[10px] ml-1"></i>
                 </th>
                 <th class="p-3.5 min-w-[130px]">
                   Alcance / Conversão
                 </th>
-                <th class="p-3.5 text-center w-24">Ações</th>
+                <th class="p-3.5 text-center w-24 whitespace-nowrap">Ações</th>
               </tr>
             </thead>
             <tbody id="matrix-tbody" class="divide-y divide-slate-100 font-normal">
@@ -3485,27 +3485,27 @@
         };
 
         const tipoBadge = item.tipo === 'Físico' 
-          ? `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-emerald-600 text-white shadow-xs"><i class="fa-solid fa-location-dot mr-1 text-[9px]"></i> FÍSICO</span>`
-          : `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-indigo-600 text-white shadow-xs"><i class="fa-solid fa-globe mr-1 text-[9px]"></i> VIRTUAL</span>`;
+          ? `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-emerald-600 text-white shadow-xs whitespace-nowrap"><i class="fa-solid fa-location-dot mr-1 text-[9px]"></i> FÍSICO</span>`
+          : `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-indigo-600 text-white shadow-xs whitespace-nowrap"><i class="fa-solid fa-globe mr-1 text-[9px]"></i> VIRTUAL</span>`;
 
         let espBadge = '';
         if (item.especialidade === 'Fono') {
-          espBadge = `<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-300 text-[11px] font-bold inline-flex items-center gap-1"><i class="fa-solid fa-comment-dots text-emerald-600 text-[10px]"></i> Fono</span>`;
+          espBadge = `<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-300 text-[11px] font-bold inline-flex items-center gap-1 whitespace-nowrap"><i class="fa-solid fa-comment-dots text-emerald-600 text-[10px]"></i> Fono</span>`;
         } else if (item.especialidade === 'Psicopedagogia') {
-          espBadge = `<span class="px-2 py-0.5 rounded bg-purple-100 text-purple-900 border border-purple-300 text-[11px] font-bold inline-flex items-center gap-1"><i class="fa-solid fa-brain text-purple-600 text-[10px]"></i> Psico</span>`;
+          espBadge = `<span class="px-2 py-0.5 rounded bg-purple-100 text-purple-900 border border-purple-300 text-[11px] font-bold inline-flex items-center gap-1 whitespace-nowrap"><i class="fa-solid fa-brain text-purple-600 text-[10px]"></i> Psico</span>`;
         } else {
-          espBadge = `<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 text-[11px] font-bold inline-flex items-center gap-1"><i class="fa-solid fa-people-arrows text-amber-600 text-[10px]"></i> Conjunta</span>`;
+          espBadge = `<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 text-[11px] font-bold inline-flex items-center gap-1 whitespace-nowrap"><i class="fa-solid fa-people-arrows text-amber-600 text-[10px]"></i> Conjunta</span>`;
         }
 
         let ondaBadge = '';
-        if (item.onda === 'Onda 1') ondaBadge = `<span class="px-2 py-0.5 rounded bg-rose-100 text-rose-900 border border-rose-300 text-xs font-extrabold font-mono">Onda 1</span>`;
-        else if (item.onda === 'Onda 2') ondaBadge = `<span class="px-2 py-0.5 rounded bg-indigo-100 text-indigo-900 border border-indigo-300 text-xs font-extrabold font-mono">Onda 2</span>`;
-        else if (item.onda === 'Onda 3') ondaBadge = `<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 text-xs font-extrabold font-mono">Onda 3</span>`;
-        else ondaBadge = `<span class="px-2 py-0.5 rounded bg-slate-200 text-slate-800 border border-slate-300 text-xs font-extrabold font-mono">Onda 4</span>`;
+        if (item.onda === 'Onda 1') ondaBadge = `<span class="px-2.5 py-1 rounded-md bg-rose-100 text-rose-900 border border-rose-300 text-[11px] font-extrabold font-mono whitespace-nowrap inline-block shadow-2xs">Onda 1</span>`;
+        else if (item.onda === 'Onda 2') ondaBadge = `<span class="px-2.5 py-1 rounded-md bg-indigo-100 text-indigo-900 border border-indigo-300 text-[11px] font-extrabold font-mono whitespace-nowrap inline-block shadow-2xs">Onda 2</span>`;
+        else if (item.onda === 'Onda 3') ondaBadge = `<span class="px-2.5 py-1 rounded-md bg-amber-100 text-amber-900 border border-amber-300 text-[11px] font-extrabold font-mono whitespace-nowrap inline-block shadow-2xs">Onda 3</span>`;
+        else ondaBadge = `<span class="px-2.5 py-1 rounded-md bg-slate-200 text-slate-800 border border-slate-300 text-[11px] font-extrabold font-mono whitespace-nowrap inline-block shadow-2xs">Onda 4</span>`;
 
         tr.innerHTML = `
-          <td class="p-3.5 font-mono font-bold text-slate-400 text-xs">${item.id}</td>
-          <td class="p-3.5">${ondaBadge}</td>
+          <td class="p-3.5 font-mono font-bold text-slate-400 text-xs text-center">${item.id}</td>
+          <td class="p-3.5 text-center whitespace-nowrap">${ondaBadge}</td>
           <td class="p-3.5">
             <div class="font-bold text-slate-900 leading-snug">${item.publico}</div>
             <div class="text-xs text-slate-500 flex items-center gap-1 mt-0.5 font-medium">
@@ -3513,16 +3513,16 @@
             </div>
           </td>
           <td class="p-3.5 text-slate-700 leading-relaxed font-normal">${item.dor}</td>
-          <td class="p-3.5 text-center">${tipoBadge}</td>
-          <td class="p-3.5 text-center">${espBadge}</td>
-          <td class="p-3.5">
+          <td class="p-3.5 text-center whitespace-nowrap">${tipoBadge}</td>
+          <td class="p-3.5 text-center whitespace-nowrap">${espBadge}</td>
+          <td class="p-3.5 whitespace-nowrap">
             <div class="font-bold text-teal-900 font-mono">${item.ltv}</div>
             <div class="text-xs text-slate-500 font-medium">${item.velocidade}</div>
           </td>
           <td class="p-3.5">
             <div class="text-slate-900 font-semibold text-xs leading-snug">${item.alcance}</div>
           </td>
-          <td class="p-3.5 text-center">
+          <td class="p-3.5 text-center whitespace-nowrap">
             <button onclick="openChannelModal(${item.id})" class="px-3 py-1.5 bg-slate-100 text-slate-800 hover:bg-teal-600 hover:text-white rounded-lg text-xs font-bold transition shadow-xs border border-slate-200">
               Dossiê
             </button>
@@ -4483,23 +4483,30 @@ function formatAiResponse(text) {
 async function callGeminiLiveApi(key, query) {
   const cachedAcf = localStorage.getItem('cached_acf_kernel');
   const acfSystemInstruction = cachedAcf || `=== PROTOCOLO EXECUTIVO: HUB DE ENGENHARIA DE INTEGRAÇÃO ===
-Você é o Consultor Executivo do Hub de Neurodesenvolvimento no Bairro Castelo/Pampulha, BH (Doutorado Fonoaudiologia + Psicopedagogia).
-DIRETRIZES DE RESPOSTA:
-1. Responda de forma extremamente direta, concisa e executiva (máximo de 3 a 4 tópicos curtos).
-2. Não use introduções longas. Vá direto ao ponto prático.
-3. Foque estritamente em: CAA (TD Snap/PODD), TAV (Implante Coclear), PDI escolar, compliance com a LBI, Fator R a 6% e vendas semestrais Value-Based.
-4. Formate sempre com marcadores claros e títulos objetivos. Nunca gere caixas ASCII de texto ou logs de depuração.`;
+[LOCALIZAÇÃO]: Bairro Castelo & Pampulha — Belo Horizonte / MG
+[CORPO TÉCNICO]: Doutorado em Fonoaudiologia (CAA/TAV/Bimodal) + Especialista em Neuroaprendizagem e Psicopedagogia (PDI/LBI).
+
+DIRETRIZES DE RESPOSTA E CONTRATO DE SAÍDA:
+1. CONCISÃO E PROFUNDIDADE: Responda de forma direta, executiva e fluida em 3 a 4 tópicos objetivos (máximo 180 a 250 palavras). Nunca interrompa o texto no meio.
+2. ANCORAGEM NO HUB:
+   - "Inclusion Audit" no Hub é a Auditoria de Conformidade e Blindagem Pedagógica do PDI escolar perante a Lei Brasileira de Inclusão (LBI nº 13.146/2015) para escolas particulares do Castelo. NÃO confunda com ensaios clínicos ou auditorias farmacêuticas.
+   - "UTI de Transição": Protocolo intensivo de 90 dias com desmame rápido.
+   - "CAA & TAV": Comunicação Aumentativa/Alternativa (TD Snap/PODD) e Treinamento Auditivo-Verbal (Implante Coclear/Bimodal).
+   - "Fator R": 6% no Simples Nacional com economia de 9,5% sobre faturamento.
+3. FORMATAÇÃO: Formate em tópicos limpos com títulos claros. Não use diagramas ASCII quebrados nem tags brutas de sistema.`;
+
+  const contextualQuery = `[Contexto: Hub de Neurodesenvolvimento Castelo/Pampulha BH - Fonoaudiologia & Psicopedagogia]\nPergunta: ${query}`;
 
   const payload = {
     systemInstruction: {
       parts: [{ text: acfSystemInstruction }]
     },
     contents: [
-      { role: "user", parts: [{ text: query }] }
+      { role: "user", parts: [{ text: contextualQuery }] }
     ],
     generationConfig: {
-      temperature: 0.5,
-      maxOutputTokens: 800
+      temperature: 0.4,
+      maxOutputTokens: 2048
     }
   };
 
