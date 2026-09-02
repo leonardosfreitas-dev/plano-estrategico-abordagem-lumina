@@ -2880,6 +2880,7 @@
       },
       {
         id: 5,
+        stepOrder: "1.7",
         onda: "Onda 1",
         ondaNum: 1,
         publico: "Centros Especializados em Terapia ABA",
@@ -2902,6 +2903,7 @@
       },
       {
         id: 6,
+        stepOrder: "1.8",
         onda: "Onda 1",
         ondaNum: 1,
         publico: "Geneticistas Pediátricos de Referência",
@@ -2924,6 +2926,7 @@
       },
       {
         id: 7,
+        stepOrder: "1.9",
         onda: "Onda 1",
         ondaNum: 1,
         publico: "Gastropediatras (Seletividade Alimentar)",
@@ -2946,6 +2949,7 @@
       },
       {
         id: 8,
+        stepOrder: "1.10",
         onda: "Onda 1",
         ondaNum: 1,
         publico: "Psiquiatras da Infância e Adolescência",
@@ -2968,6 +2972,7 @@
       },
       {
         id: 9,
+        stepOrder: "1.11",
         onda: "Onda 1",
         ondaNum: 1,
         publico: "Centros de Diagnóstico Audiológico (BERA)",
@@ -2990,6 +2995,7 @@
       },
       {
         id: 10,
+        stepOrder: "1.12",
         onda: "Onda 1",
         ondaNum: 1,
         publico: "Terapeutas Ocupacionais Pediátricas",
@@ -5096,51 +5102,62 @@
       filterMatrixTable();
     }
 
-    function filterMatrixTable() {
-      const searchInput = document.getElementById('matrix-search');
-      const espFilterEl = document.getElementById('matrix-esp-filter');
-      const ondaFilterEl = document.getElementById('matrix-onda-filter');
-      const typeFilterEl = document.getElementById('matrix-type-filter');
+    // Comparador numérico hierárquico (ex: "1.2" vem antes de "1.10")
+function compareStepOrders(orderA, orderB) {
+  const partsA = String(orderA).split('.').map(Number);
+  const partsB = String(orderB).split('.').map(Number);
+  for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+    const a = partsA[i] || 0;
+    const b = partsB[i] || 0;
+    if (a !== b) return a - b;
+  }
+  return 0;
+}
 
-      const search = searchInput ? searchInput.value.toLowerCase() : '';
-      const espFilter = espFilterEl ? espFilterEl.value : 'ALL';
-      const ondaFilter = ondaFilterEl ? ondaFilterEl.value : 'ALL';
-      const typeFilter = typeFilterEl ? typeFilterEl.value : 'ALL';
+function filterMatrixTable() {
+  const searchInput = document.getElementById('matrix-search');
+  const espFilterEl = document.getElementById('matrix-esp-filter');
+  const ondaFilterEl = document.getElementById('matrix-onda-filter');
+  const typeFilterEl = document.getElementById('matrix-type-filter');
 
-      let filtered = channelsData.filter(item => {
-        const matchesSearch = item.publico.toLowerCase().includes(search) ||
-                              item.dor.toLowerCase().includes(search) ||
-                              item.local.toLowerCase().includes(search) ||
-                              item.estrategia.toLowerCase().includes(search) ||
-                              (item.fonoRole && item.fonoRole.toLowerCase().includes(search)) ||
-                              (item.psicoRole && item.psicoRole.toLowerCase().includes(search));
-        
-        const matchesEsp = espFilter === 'ALL' || item.especialidade === espFilter;
-        const matchesOnda = ondaFilter === 'ALL' || item.onda === ondaFilter;
-        const matchesType = typeFilter === 'ALL' || item.tipo === typeFilter;
+  const search = searchInput ? searchInput.value.toLowerCase() : '';
+  const espFilter = espFilterEl ? espFilterEl.value : 'ALL';
+  const ondaFilter = ondaFilterEl ? ondaFilterEl.value : 'ALL';
+  const typeFilter = typeFilterEl ? typeFilterEl.value : 'ALL';
 
-        return matchesSearch && matchesEsp && matchesOnda && matchesType;
-      });
+  let filtered = channelsData.filter(item => {
+    const matchesSearch = item.publico.toLowerCase().includes(search) ||
+                          item.dor.toLowerCase().includes(search) ||
+                          item.local.toLowerCase().includes(search) ||
+                          item.estrategia.toLowerCase().includes(search) ||
+                          (item.fonoRole && item.fonoRole.toLowerCase().includes(search)) ||
+                          (item.psicoRole && item.psicoRole.toLowerCase().includes(search));
+    
+    const matchesEsp = espFilter === 'ALL' || item.especialidade === espFilter;
+    const matchesOnda = ondaFilter === 'ALL' || item.onda === ondaFilter;
+    const matchesType = typeFilter === 'ALL' || item.tipo === typeFilter;
 
-      if (isSequentialViewActive) {
-        // Ordena estritamente por ordem cronológica do grafo
-        filtered.sort((a, b) => parseFloat(a.stepOrder || a.id) - parseFloat(b.stepOrder || b.id));
-      } else {
-        filtered.sort((a, b) => {
-          let valA = a[currentSortColumn];
-          let valB = b[currentSortColumn];
-          if (typeof valA === 'string') valA = valA.toLowerCase();
-          if (typeof valB === 'string') valB = valB.toLowerCase();
+    return matchesSearch && matchesEsp && matchesOnda && matchesType;
+  });
 
-          if (valA < valB) return currentSortAsc ? -1 : 1;
-          if (valA > valB) return currentSortAsc ? 1 : -1;
-          return 0;
-        });
-      }
+  if (isSequentialViewActive) {
+    filtered.sort((a, b) => compareStepOrders(a.stepOrder || a.id, b.stepOrder || b.id));
+  } else {
+    filtered.sort((a, b) => {
+      let valA = a[currentSortColumn];
+      let valB = b[currentSortColumn];
+      if (typeof valA === 'string') valA = valA.toLowerCase();
+      if (typeof valB === 'string') valB = valB.toLowerCase();
 
-      renderChannelsTable(filtered);
-      serializeStateToUrl(false);
-    }
+      if (valA < valB) return currentSortAsc ? -1 : 1;
+      if (valA > valB) return currentSortAsc ? 1 : -1;
+      return 0;
+    });
+  }
+
+  renderChannelsTable(filtered);
+  serializeStateToUrl(false);
+}
 
     function sortMatrixTable(columnKey) {
       if (isSequentialViewActive) return; // Trava ordenação no modo sequencial
@@ -5519,339 +5536,240 @@
     }
 
     /* ========================================================================= */
-    /* 11. COPILOT IA DUAL-CORE (CLOUDFLARE PROXY + ACTION CHIPS + ACF LOCAL)     */
-    /* ========================================================================= */
-    const CLOUDFLARE_WORKER_URL = "https://geminiproxylumina.leonardosfreitas.workers.dev";
-    const DEFAULT_GEMINI_API_KEY = "";
+/* 11. COPILOT IA DUAL-CORE (BLINDAGEM SOTA COM CONTINGÊNCIA INSTANTÂNEA)   */
+/* ========================================================================= */
+const CLOUDFLARE_WORKER_URL = "https://geminiproxylumina.leonardosfreitas.workers.dev";
+const DEFAULT_GEMINI_API_KEY = "";
 
-    function sanitizeApiKey(rawKey) {
-      if (!rawKey) return '';
-      return rawKey.trim().replace(/^["']|["']$/g, '');
+function sanitizeApiKey(rawKey) {
+  if (!rawKey) return '';
+  return rawKey.trim().replace(/^["']|["']$/g, '');
+}
+
+function getActiveApiKey() {
+  const customKey = localStorage.getItem('gemini_api_key');
+  if (customKey && customKey.trim() !== '') {
+    return sanitizeApiKey(customKey);
+  }
+  return sanitizeApiKey(DEFAULT_GEMINI_API_KEY);
+}
+
+function updateCopilotModeBadge() {
+  const badge = document.getElementById('copilot-mode-badge');
+  if (!badge) return;
+
+  const directKey = getActiveApiKey();
+  const hasWorker = CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO");
+
+  if (directKey && directKey.startsWith('AIzaSy')) {
+    badge.innerText = "Modo: Gemini Live (Chave Direta)";
+    badge.className = "text-[11px] text-emerald-300 font-mono flex items-center gap-1";
+  } else if (hasWorker) {
+    badge.innerText = "Modo: Gemini Live Cloud (Proxy Cloudflare)";
+    badge.className = "text-[11px] text-emerald-300 font-mono flex items-center gap-1";
+  } else {
+    badge.innerText = "Modo: Motor Local ACF (0ms)";
+    badge.className = "text-[11px] text-teal-300 font-mono";
+  }
+}
+
+function toggleCopilotDrawer(initialQuery = null) {
+  const drawer = document.getElementById('ai-copilot-drawer');
+  const backdrop = document.getElementById('drawer-backdrop');
+  const panel = document.getElementById('drawer-panel');
+
+  if (!drawer || !backdrop || !panel) return;
+
+  const isHidden = panel.classList.contains('translate-x-full');
+
+  // Se houver query inicial, força a abertura sem fechar caso já esteja aberto
+  if (initialQuery || isHidden) {
+    updateCopilotModeBadge();
+    drawer.classList.remove('pointer-events-none');
+    backdrop.classList.remove('hidden');
+    setTimeout(() => {
+      backdrop.classList.remove('opacity-0');
+      panel.classList.remove('translate-x-full');
+    }, 10);
+
+    if (initialQuery && typeof initialQuery === 'string') {
+      handleCopilotQuery(initialQuery);
     }
+  } else {
+    backdrop.classList.add('opacity-0');
+    panel.classList.add('translate-x-full');
+    setTimeout(() => {
+      backdrop.classList.add('hidden');
+      drawer.classList.add('pointer-events-none');
+    }, 300);
+  }
+}
 
-    function getActiveApiKey() {
-      const customKey = localStorage.getItem('gemini_api_key');
-      if (customKey && customKey.trim() !== '') {
-        return sanitizeApiKey(customKey);
+async function handleCopilotQuery(userQuery) {
+  if (!userQuery || typeof userQuery !== 'string' || userQuery.trim() === '') return;
+
+  const container = document.getElementById('copilot-messages');
+  if (!container) return;
+  
+  const userMsg = document.createElement('div');
+  userMsg.className = "bg-slate-900 text-white p-3 rounded-xl ml-6 text-xs sm:text-sm shadow-sm leading-relaxed";
+  userMsg.innerText = userQuery;
+  container.appendChild(userMsg);
+
+  const aiMsg = document.createElement('div');
+  aiMsg.className = "bg-teal-50/90 p-3.5 rounded-xl mr-6 border border-teal-200 text-slate-800 text-xs sm:text-sm space-y-1.5 animate-pulse leading-relaxed";
+  aiMsg.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1 text-teal-600"></i> Processando raciocínio sob protocolo ACF...`;
+  container.appendChild(aiMsg);
+  container.scrollTop = container.scrollHeight;
+
+  const apiKey = getActiveApiKey();
+  const hasWorker = CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO");
+  const hasDirectKey = apiKey && apiKey.startsWith('AIzaSy');
+
+  if ((hasWorker || hasDirectKey) && navigator.onLine) {
+    try {
+      const response = await callGeminiLiveApi(apiKey, userQuery);
+      if (response) {
+        aiMsg.classList.remove('animate-pulse');
+        const originBadge = `<div class="text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-1 flex items-center gap-1"><i class="fa-solid fa-cloud text-emerald-600"></i> Resposta Gemini Live (Proxy Cloudflare)</div>`;
+        aiMsg.innerHTML = originBadge + response;
+        container.scrollTop = container.scrollHeight;
+        return;
       }
-      return sanitizeApiKey(DEFAULT_GEMINI_API_KEY);
+    } catch (err) {
+      // Falha silenciosa em dev/local: transição fluida para a contingência
     }
+  }
 
-    function updateCopilotModeBadge() {
-      const badge = document.getElementById('copilot-mode-badge');
-      if (!badge) return;
+  // Fallback Instantâneo para Motor Local ACF
+  aiMsg.classList.remove('animate-pulse');
 
-      const directKey = getActiveApiKey();
-      const hasWorker = CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO");
+  const badge = document.getElementById('copilot-mode-badge');
+  if (badge) {
+    badge.innerHTML = `<span class="text-amber-300 font-mono text-[11px] flex items-center gap-1.5"><i class="fa-solid fa-bolt text-amber-400"></i> Modo: Motor Local ACF (Contingência Instantânea)</span>`;
+  }
 
-      if (hasWorker) {
-        badge.innerText = "Modo: Gemini Live Cloud (Proxy Seguro)";
-        badge.className = "text-[11px] text-emerald-300 font-mono flex items-center gap-1";
-      } else if (directKey && directKey.startsWith('AIzaSy')) {
-        badge.innerText = "Modo: Gemini Live (Chave Direta)";
-        badge.className = "text-[11px] text-emerald-300 font-mono flex items-center gap-1";
-      } else {
-        badge.innerText = "Modo: Motor Local ACF (0ms)";
-        badge.className = "text-[11px] text-teal-300 font-mono";
-      }
-    }
+  const localResponse = generateSemanticCopilotResponse(userQuery);
+  const originBadge = `<div class="text-[10px] font-bold text-teal-800 uppercase tracking-wider mb-1 flex items-center gap-1"><i class="fa-solid fa-microchip text-teal-600"></i> Motor Local ACF (0ms)</div>`;
+  
+  aiMsg.innerHTML = originBadge + localResponse;
+  container.scrollTop = container.scrollHeight;
+}
 
-    function toggleCopilotDrawer(initialQuery = null) {
-      const drawer = document.getElementById('ai-copilot-drawer');
-      const backdrop = document.getElementById('drawer-backdrop');
-      const panel = document.getElementById('drawer-panel');
-
-      if (!drawer || !backdrop || !panel) return;
-
-      const isHidden = panel.classList.contains('translate-x-full');
-
-      if (isHidden) {
-        updateCopilotModeBadge();
-        drawer.classList.remove('pointer-events-none');
-        backdrop.classList.remove('hidden');
-        setTimeout(() => {
-          backdrop.classList.remove('opacity-0');
-          panel.classList.remove('translate-x-full');
-        }, 10);
-
-        if (initialQuery) {
-          handleCopilotQuery(initialQuery);
-        }
-      } else {
-        backdrop.classList.add('opacity-0');
-        panel.classList.add('translate-x-full');
-        setTimeout(() => {
-          backdrop.classList.add('hidden');
-          drawer.classList.add('pointer-events-none');
-        }, 300);
-      }
-    }
-
-    function askCopilotPredefined(query) {
-      handleCopilotQuery(query);
-    }
-
-    function sendCopilotCustomQuery() {
-      const input = document.getElementById('copilot-input');
-      const query = input ? input.value.trim() : '';
-      if (!query) return;
-      input.value = '';
-      handleCopilotQuery(query);
-    }
-
-    async function handleCopilotQuery(userQuery) {
-      const container = document.getElementById('copilot-messages');
-      if (!container) return;
-      
-      const userMsg = document.createElement('div');
-      userMsg.className = "bg-slate-900 text-white p-3 rounded-xl ml-6 text-xs sm:text-sm shadow-sm leading-relaxed";
-      userMsg.innerText = userQuery;
-      container.appendChild(userMsg);
-
-      const aiMsg = document.createElement('div');
-      aiMsg.className = "bg-teal-50/90 p-3.5 rounded-xl mr-6 border border-teal-200 text-slate-800 text-xs sm:text-sm space-y-1.5 animate-pulse leading-relaxed";
-      aiMsg.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1 text-teal-600"></i> Processando raciocínio sob protocolo ACF...`;
-      container.appendChild(aiMsg);
-      container.scrollTop = container.scrollHeight;
-
-      const apiKey = getActiveApiKey();
-      const hasWorker = CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO");
-      const hasDirectKey = apiKey && apiKey.startsWith('AIzaSy');
-
-      // Tenta conexão remota com limite estrito de 2500ms
-      if ((hasWorker || hasDirectKey) && navigator.onLine) {
-        try {
-          const response = await callGeminiLiveApi(apiKey, userQuery);
-          aiMsg.classList.remove('animate-pulse');
-          const originBadge = `<div class="text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-1 flex items-center gap-1"><i class="fa-solid fa-cloud text-emerald-600"></i> Resposta Gemini Live (Proxy Cloudflare)</div>`;
-          aiMsg.innerHTML = originBadge + response;
-          container.scrollTop = container.scrollHeight;
-          return;
-        } catch (err) {
-          console.warn("Gateway remoto offline/timeout. Comutando para Motor Local ACF:", err.message);
-        }
-      }
-
-      // Contingência Imediata (0ms)
-      aiMsg.classList.remove('animate-pulse');
-
-      const badge = document.getElementById('copilot-mode-badge');
-      if (badge) {
-        badge.innerHTML = `<span class="text-amber-300 font-mono text-[11px] flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation text-amber-400 animate-pulse"></i> Modo: Motor Local ACF (Offline/Contingência)</span>`;
-      }
-
-      const localResponse = generateSemanticCopilotResponse(userQuery);
-      const originBadge = `<div class="text-[10px] font-bold text-teal-800 uppercase tracking-wider mb-1 flex items-center gap-1"><i class="fa-solid fa-microchip text-teal-600"></i> Motor Local ACF (Contingência Instantânea)</div>`;
-      
-      aiMsg.innerHTML = originBadge + localResponse;
-      container.scrollTop = container.scrollHeight;
-    }
-
-    
-    /**
-     * Higienizador, Formatador Tipográfico & Renderizador de Action Chips SOTA
-     */
-    function formatAiResponse(text) {
-      if (!text) return '';
-      
-      let clean = text
-        .replace(/\[ACF\s+[^\]]+\]/gi, '')
-        .replace(new RegExp('```[a-zA-Z]*[\\s\\S]*?```', 'gi'), '')
-        .replace(/^###\s*(.*$)/gim, '<h4 class="font-bold text-slate-900 mt-2.5 mb-1 text-xs sm:text-sm flex items-center gap-1.5"><i class="fa-solid fa-circle-chevron-right text-teal-600 text-[10px]"></i> $1</h4>')
-        .replace(/^##\s*(.*$)/gim, '<h3 class="font-extrabold text-teal-950 mt-3 mb-1 text-sm border-b border-teal-100 pb-1">$1</h3>')
-        .replace(/^#\s*(.*$)/gim, '<h2 class="font-black text-teal-950 mt-3.5 mb-1.5 text-sm sm:text-base">$1</h2>')
-        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-slate-900">$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em class="italic text-slate-700">$1</em>')
-        .replace(/^\s*[\-\*]\s+(.*$)/gim, '<li class="ml-3.5 list-disc text-slate-700 leading-relaxed my-0.5">$1</li>')
-        .replace(/\n{2,}/g, '<div class="my-2"></div>')
-        .replace(/\n/g, '<br>');
-
-      // Parser de Action Chips dinâmicos [CHIP: ...]
-      const chipRegex = /\[CHIP:\s*([^\]]+)\]/gi;
-      const chips = [];
-      let match;
-
-      while ((match = chipRegex.exec(clean)) !== null) {
-        chips.push(match[1].trim());
-      }
-
-      clean = clean.replace(chipRegex, '');
-
-      if (chips.length > 0) {
-        let chipsHtml = `
-          <div class="mt-3.5 pt-2.5 border-t border-teal-200/60">
-            <span class="text-[10px] font-bold text-teal-900 uppercase tracking-wider block mb-1.5 flex items-center gap-1">
-              <i class="fa-solid fa-wand-magic-sparkles text-teal-600 text-[9px]"></i> Sugestões de Aprofundamento:
-            </span>
-            <div class="flex flex-wrap gap-1.5">
-        `;
-
-        chips.forEach(chipText => {
-          const safeQuery = chipText.replace(/"/g, '&quot;').replace(/'/g, "\\'");
-          chipsHtml += `
-            <button onclick="askCopilotPredefined('${safeQuery}')" 
-                    class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-teal-600 text-teal-900 hover:text-white border border-teal-300 hover:border-teal-600 rounded-lg text-xs font-semibold shadow-2xs transition-all text-left">
-              <i class="fa-solid fa-arrow-turn-down text-[9px] text-teal-600 hover:text-white rotate-[-90deg]"></i>
-              <span>${chipText}</span>
-            </button>
-          `;
-        });
-
-        chipsHtml += `</div></div>`;
-        clean += chipsHtml;
-      }
-
-      return clean.trim();
-    }
-
-    async function callGeminiLiveApi(key, query) {
-      const cachedAcf = localStorage.getItem('cached_acf_kernel');
-      const acfSystemInstruction = cachedAcf || `=== PROTOCOLO EXECUTIVO: HUB DE ENGENHARIA DE INTEGRAÇÃO ===
+async function callGeminiLiveApi(key, query) {
+  const cachedAcf = localStorage.getItem('cached_acf_kernel');
+  const acfSystemInstruction = cachedAcf || `=== PROTOCOLO EXECUTIVO: HUB DE ENGENHARIA DE INTEGRAÇÃO ===
 [LOCALIZAÇÃO]: Bairro Castelo & Pampulha — Belo Horizonte / MG
 [CORPO TÉCNICO]: Doutoramento em Fonoaudiologia (CAA/TAV/Bimodal) + Especialista em Neuroaprendizagem e Psicopedagogia (PDI/LBI).
 
-DIRETRIZES DE RESPOSTA E CONTRATO DE SAÍDA:
-1. CONCISÃO E PROFUNDIDADE: Responda de forma direta, executiva e fluida em 3 a 4 tópicos objetivos (máximo 140 a 180 palavras). Nunca interrompa o texto a meio.
-2. ANCORAGEM NO HUB:
-   - "Inclusion Audit" no Hub é a Auditoria de Conformidade e Blindagem Pedagógica do PDI escolar perante a Lei Brasileira de Inclusão (LBI n.º 13.146/2015) para colégios privados do Castelo. NÃO confundir com ensaios clínicos farmacêuticos.
-   - "UTI de Transição": Protocolo intensivo de 90 dias com desmame rápido.
-   - "CAA & TAV": Comunicação Aumentativa/Alternativa (TD Snap/PODD) e Treino Auditivo-Verbal (Implante Coclear/Bimodal).
-   - "Fator R": 6% no Simples Nacional com poupança de 9,5% sobre o faturamento.
-3. ACTION CHIPS: Ao final, anexe 2 a 3 sugestões de aprofundamento usando a sintaxe [CHIP: Tópico].`;
+DIRETRIZES:
+1. Responda de forma direta e executiva em 3 a 4 tópicos (máx. 160 palavras).
+2. Ancoragem: "Inclusion Audit" é a auditoria pericial do PDI escolar sob a LBI (Lei 13.146/2015). UTI de Transição dura 90 dias com foco em desmame. Fator R reduz Simples a 6,0%.
+3. Conclua com 2 a 3 Action Chips no formato [CHIP: Tópico de Aprofundamento].`;
 
-      const contextualQuery = `[Contexto: Hub de Neurodesenvolvimento Castelo/Pampulha BH - Fonoaudiologia & Psicopedagogia]\nPergunta: ${query}`;
+  const contextualQuery = `[Contexto: Hub Neurodesenvolvimento Castelo/Pampulha BH - Fono & Psico]\nPergunta: ${query}`;
 
-      const payload = {
-        systemInstruction: {
-          parts: [{ text: acfSystemInstruction }]
-        },
-        contents: [
-          { role: "user", parts: [{ text: contextualQuery }] }
-        ],
-        generationConfig: {
-          temperature: 0.4,
-          maxOutputTokens: 8192
-        }
-      };
+  const payload = {
+    systemInstruction: { parts: [{ text: acfSystemInstruction }] },
+    contents: [{ role: "user", parts: [{ text: contextualQuery }] }],
+    generationConfig: { temperature: 0.35, maxOutputTokens: 2048 }
+  };
 
-      // 1. Verificação de conectividade física
-      if (!navigator.onLine) {
-        throw new Error("Dispositivo offline.");
-      }
+  if (!navigator.onLine) throw new Error("Offline");
 
-      // 2. Chamada ao Cloudflare Worker com Modelo de Produção e Timeout Realista (7000ms)
-      if (CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO")) {
-        const controller = new AbortController();
-        const timeoutTimer = setTimeout(() => controller.abort(), 7000); // 7s permite cold-start + geração
+  // 1. Chamada via Worker com timeout calibrado (4.5s)
+  if (CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO")) {
+    const controller = new AbortController();
+    const timeoutTimer = setTimeout(() => controller.abort(), 4500);
 
-        try {
-          const workerRes = await fetch(CLOUDFLARE_WORKER_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              model: "gemini-1.5-flash", // Modelo válido na API do Google
-              apiVersion: "v1beta",
-              apiKey: key || undefined,
-              payload: payload
-            }),
-            signal: controller.signal
-          });
+    try {
+      const workerRes = await fetch(CLOUDFLARE_WORKER_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "gemini-1.5-flash",
+          apiVersion: "v1beta",
+          apiKey: key || undefined,
+          payload: payload
+        }),
+        signal: controller.signal
+      });
 
-          clearTimeout(timeoutTimer);
+      clearTimeout(timeoutTimer);
 
-          if (!workerRes.ok) {
-            const errData = await workerRes.json().catch(() => ({}));
-            const errMsg = errData.error?.message || errData.message || `HTTP ${workerRes.status}`;
-            throw new Error(`Worker: ${errMsg}`);
-          }
+      if (!workerRes.ok) throw new Error(`Status ${workerRes.status}`);
 
-          const data = await workerRes.json().catch(() => ({}));
+      const data = await workerRes.json().catch(() => ({}));
+      
+      // Suporte polimórfico para resposta raw Gemini ou resumida do Worker
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || data.text || data.response || data.reply;
+      if (rawText) return formatAiResponse(rawText);
 
-          if (data.candidates && data.candidates.length > 0) {
-            const parts = data.candidates[0]?.content?.parts || [];
-            const textPart = parts.find(p => p.text && !p.thought) || parts[0];
-            if (textPart && textPart.text) {
-              return formatAiResponse(textPart.text);
-            }
-          }
-
-          throw new Error("Payload vazio retornado pela nuvem.");
-        } catch (fetchErr) {
-          clearTimeout(timeoutTimer);
-          if (fetchErr.name === 'AbortError') {
-            throw new Error("Timeout na resposta remota (limite de 7s excedido).");
-          }
-          throw fetchErr;
-        }
-      }
-
-      // 2. Chamada direta de contingência
-      const sanitizedKey = sanitizeApiKey(key);
-      if (sanitizedKey && sanitizedKey.startsWith('AIzaSy')) {
-        const directRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(sanitizedKey)}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": sanitizedKey
-          },
-          body: JSON.stringify(payload)
-        });
-
-        const data = await directRes.json().catch(() => ({}));
-
-        if (!directRes.ok) {
-          const detailedError = data.error?.message || (typeof data.error === 'string' ? data.error : `HTTP ${directRes.status}`);
-          throw new Error(`[Direct API] ${detailedError}`);
-        }
-
-        const parts = data.candidates?.[0]?.content?.parts || [];
-        const textPart = parts.find(p => p.text && !p.thought) || parts[0];
-        return formatAiResponse(textPart ? textPart.text : "Resposta processada com sucesso.");
-      }
-
-      throw new Error("Nenhum canal ativo de IA configurado.");
+      throw new Error("Payload vazio");
+    } catch (fetchErr) {
+      clearTimeout(timeoutTimer);
+      throw fetchErr;
     }
+  }
 
-    function generateSemanticCopilotResponse(query) {
-      const q = query.toLowerCase();
+  // 2. Chamada Direta via Google API (se chave AIzaSy estiver presente)
+  const sanitizedKey = sanitizeApiKey(key);
+  if (sanitizedKey && sanitizedKey.startsWith('AIzaSy')) {
+    const directRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(sanitizedKey)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
 
-      if (q.includes('velocidade') || q.includes('retorno') || q.includes('ltv')) {
-        return formatAiResponse(`A velocidade de retorno e o LTV estruturam a alocação de tempo clínico:
+    if (!directRes.ok) throw new Error(`Direct API ${directRes.status}`);
+    const data = await directRes.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (text) return formatAiResponse(text);
+  }
+
+  throw new Error("Sem canal ativo");
+}
+
+function generateSemanticCopilotResponse(query) {
+  const q = (query || '').toLowerCase();
+
+  if (q.includes('velocidade') || q.includes('retorno') || q.includes('ltv')) {
+    return formatAiResponse(`A velocidade de retorno e o LTV estruturam a alocação de tempo clínico:
 • **Canais Imediatos (7 a 15 dias):** Otorrinolaringologistas, Centros de IC e Google Search de Fundo de Funil ('Apraxia BH').
 • **Canais Médios (30 a 60 dias):** Colégios Privados e LinkedIn B2B para o serviço de *Inclusion Audit* (P1).
-• **Canais de Saturação (45 a 60 dias):** Mega-condomínios da Av. Miguel Perrela e clubes tradicionais da Pampulha.
+• **Canais de Saturação (45 a 60 dias):** Mega-condomínios da Av. Miguel Perrela e clubes da Pampulha.
 [CHIP: Como calcular o LTV familiar no modelo semestral?]
 [CHIP: Ver script de abordagem para secretárias de Neuropediatria]`);
-      } else if (q.includes('fator r') || q.includes('imposto') || q.includes('simples')) {
-        return formatAiResponse(`A governança tributária do Hub ancora-se no Art. 18 da LC n.º 123/2006:
+  } else if (q.includes('fator r') || q.includes('imposto') || q.includes('simples')) {
+    return formatAiResponse(`A governança tributária do Hub ancora-se no Art. 18 da LC n.º 123/2006:
 • **Enquadramento Inicial:** 15,5% no Anexo V do Simples Nacional.
-• **Aplicação do Fator R:** Mantendo a folha salarial e pró-labore em $\\ge 28,1\\%$, a tributação migra para 6,0% no Anexo III.
-• **Impacto Real:** Poupança líquida de 9,5% sobre o faturamento (mais de R$ 65.000/ano preservados).
-[CHIP: Qual o valor de pró-labore necessário para faturar R$ 60k?]
-[CHIP: Como funciona a distribuição de lucros isenta de IRPF?]`);
-      } else if (q.includes('compliance') || q.includes('lbi') || q.includes('escola') || q.includes('pdi') || q.includes('inclusion audit')) {
-        return formatAiResponse(`O *Inclusion Audit* constitui a blindagem institucional das escolas particulares:
+• **Aplicação do Fator R:** Mantendo folha salarial e pró-labore em $\\ge 28,1\\%$, a alíquota cai para 6,0% no Anexo III.
+• **Impacto Real:** Economia líquida de 9,5% sobre o faturamento (mais de R$ 65.000/ano preservados).
+[CHIP: Qual o pró-labore necessário para faturar R$ 60k no Fator R?]
+[CHIP: Como distribuir lucros com isenção de IRPF?]`);
+  } else if (q.includes('compliance') || q.includes('lbi') || q.includes('escola') || q.includes('pdi') || q.includes('inclusion audit')) {
+    return formatAiResponse(`O *Inclusion Audit* constitui a blindagem institucional das escolas particulares:
 • **Base Legal:** Lei Brasileira de Inclusão (LBI n.º 13.146/2015).
-• **Entregável:** Auditoria e chancela técnica pericial do PDI pela Psicopedagoga e Fonoaudióloga.
-• **Resultado:** Isenção da direção escolar de litígios no Ministério Público e atritos com famílias.
+• **Entregável:** Auditoria pericial externa e chancela técnica do PDI pela Psicopedagoga e Fonoaudióloga.
+• **Resultado:** Isenção da direção escolar perante o Ministério Público e redução de litígios familiares.
 [CHIP: Ver minuta de ofício técnico para diretores de escola]
 [CHIP: Como apresentar o PDI blindado perante o Ministério Público?]`);
-      } else if (q.includes('uti') || q.includes('transição') || q.includes('90 dias')) {
-        return formatAiResponse(`O protocolo da UTI de Transição (90 Dias) elimina a ineficiência de consultas avulsas:
+  } else if (q.includes('uti') || q.includes('transição') || q.includes('90 dias')) {
+    return formatAiResponse(`O protocolo da UTI de Transição (90 Dias) elimina a ineficiência de consultas avulsas:
 • **Mês 1 (Setup Clínico):** Parametrização do software de CAA (TD Snap/PODD) e avaliação bimodal intensiva.
-• **Mês 2 (Capacitação):** Formação de pais, cuidadores e visita técnica à escola.
+• **Mês 2 (Capacitação):** Formação de pais, cuidadores e alinhamento com a coordenação escolar.
 • **Mês 3 (Desmame):** Transição para supervisão quinzenal e grupos parentais aos sábados (P4).
 [CHIP: Ver estrutura da taxa de setup de R$ 3.500]
 [CHIP: Como funciona o desmame para as Rodas Parentais?]`);
-      } else {
-        return formatAiResponse(`O Hub fundamenta a sua atuação na **Engenharia de Integração** e em **Contratos Semestrais Value-Based**:
-• **Eixo Clínico:** Doutoramento em Fonoaudiologia com suporte em CAA e reabilitação bimodal (TAV).
+  } else {
+    return formatAiResponse(`O Hub fundamenta sua atuação na **Engenharia de Integração** e em **Contratos Semestrais Value-Based**:
+• **Eixo Clínico:** Doutorado em Fonoaudiologia com suporte em CAA e reabilitação bimodal (TAV).
 • **Eixo Pedagógico:** Psicopedagogia com auditoria pericial de PDI e compliance escolar perante a LBI.
-• **Eixo de Eficiência:** Fator R a 6,0% e esteira de 65 canais territoriais e digitais.
+• **Eixo de Eficiência:** Fator R a 6,0% e esteira de 65 canais territoriais e virtuais integrados.
 [CHIP: Explicar a tese do Engenheiro de Integração]
 [CHIP: Ver os 10 Battlecards de reversão de objeções]`);
-      }
-    }
+  }
+}
 
     /* ========================================================================= */
     /* 12. CONTROLADORES DE MODAIS GENÉRICOS, CHECKLIST & GLOSSÁRIO              */
