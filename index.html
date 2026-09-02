@@ -2377,6 +2377,294 @@
     };
 
     /* ========================================================================= */
+    /* 2.1. BASES DE DADOS DOS MODAIS (ONDAS, PRODUTOS, FUNIL & KPIS)            */
+    /* ========================================================================= */
+    const wavesData = {
+      1: {
+        tag: "Onda 1 • Dias 01 a 30",
+        title: "Validação & Canal Médico (Alta Complexidade)",
+        goal: "Validar a tração comercial com casos de alta barreira técnica (Apraxia, Implante Coclear, TEA severo) via secretárias médicas e Google Search cirúrgico.",
+        steps: [
+          "<b>Passo 1.1:</b> Homologação de 2 Centros Auditivos e Consultórios de Otorrino.",
+          "<b>Passo 1.2:</b> Entrega de 50 exemplares do Manual de Fila para secretárias de Neuropediatria.",
+          "<b>Passo 1.3:</b> Ativação do Google Search com termos transacionais ('Apraxia BH').",
+          "<b>Passo 1.4:</b> Fechamento dos primeiros 5 contratos da UTI de Transição."
+        ],
+        kpis: ["5 Contratos B2C ativos", "MRR mínimo de R$ 15.000,00", "Conversão > 30%"],
+        workload: "60% Atendimento clínico • 30% Parcerias médicas • 10% Governança Fator R.",
+        contingency: "Se houver menos de 3 contratos no Dia 20, conceder avaliação de prontidão gratuita para a fila do neuropediatra parceiro."
+      },
+      2: {
+        tag: "Onda 2 • Dias 31 a 75",
+        title: "Infiltração Escolar B2B & Compliance LBI",
+        goal: "Entrar no ecossistema de escolas particulares do Castelo vendendo Compliance e Blindagem Jurídica do PDI.",
+        steps: [
+          "<b>Passo 2.1:</b> Envio de ofício técnico para os mantenedores de 15 colégios privados.",
+          "<b>Passo 2.2:</b> Série editorial no LinkedIn sobre adequação de PDI e riscos na LBI.",
+          "<b>Passo 2.3:</b> Realização de 4 palestras 'Filtro Clínico em Sala de Aula' para docentes.",
+          "<b>Passo 2.4:</b> Fechamento de 2 contratos B2B de Inclusion Audit (R$ 2.500/mês cada)."
+        ],
+        kpis: ["15 Contratos B2C ativos", "2 Contratos B2B escolares", "MRR > R$ 42.000,00"],
+        workload: "50% Atendimento • 40% Auditorias escolares • 10% Relacionamento.",
+        contingency: "Caso a coordenação resista à palestra, oferecer auditoria gratuita de 1 PDI crítico."
+      },
+      3: {
+        tag: "Onda 3 • Dias 76 a 150",
+        title: "Desacoplamento da Hora-Clínica & Escala (One-to-Many)",
+        goal: "Desatrelar receita das horas físicas das sócias através de Rodas Parentais de CAA em grupo e contratação do 1º AT.",
+        steps: [
+          "<b>Passo 3.1:</b> Lançamento das Rodas de Letramento Parental em CAA (turmas aos sábados).",
+          "<b>Passo 3.2:</b> Fornecimento de Kits Odonto Neuro-Amigáveis para dentistas do Castelo.",
+          "<b>Passo 3.3:</b> Contratação e treinamento do 1º Acompanhante Terapêutico (AT) Júnior."
+        ],
+        kpis: ["25+ Famílias ativas", "2 Turmas de Rodas lotadas", "Margem EBITDA > 65%"],
+        workload: "40% Casos complexos • 30% Supervisão de ATs • 30% Parcerias.",
+        contingency: "Repassar compulsoriamente treinos de repetição para o AT caso a agenda individual ultrapasse 25h/sem."
+      },
+      4: {
+        tag: "Onda 4 • Dias 151 a 360",
+        title: "Domínio Territorial & Saturação Condominial",
+        goal: "Consolidar o monopólio regional do Castelo/Pampulha com eventos condominiais e retenção semestral > 85%.",
+        steps: [
+          "<b>Passo 4.1:</b> Rodas de Convivência Infantil nos condomínios da Av. Miguel Perrela.",
+          "<b>Passo 4.2:</b> Ciclo de renovações semestrais com novos módulos de vocabulário de CAA.",
+          "<b>Passo 4.3:</b> Publicação de dados científicos de ganho quantitativo de fala."
+        ],
+        kpis: ["Monopólio regional consolidado", "Retenção > 85%", "ARR > R$ 750.000,00"],
+        workload: "30% Casos ápice • 40% Supervisão de equipe • 30% Expansão.",
+        contingency: "Manter reserva de contingência de 3 meses de custos fixos aplicados em CDI."
+      }
+    };
+
+    const productsData = {
+      "P0": {
+        code: "P0 • Topo de Funil",
+        title: "Escala de Rastreio Expressa",
+        goal: "Coleta massiva de leads qualificados (MQLs) com devolutiva em 24h.",
+        ltv: "R$ 0 (Isca)",
+        speed: "Imediata (24-48h)",
+        target: "Famílias com suspeita de atraso comunicativo ou escolar.",
+        scope: "Questionário de 15 perguntas clínicas parametrizadas com classificação automática de risco e opt-in LGPD Art. 14.",
+        price: "Gratuito",
+        cost: "R$ 0,00 (Automação)",
+        pitch: "'Preencha o rastreio e receba uma devolutiva preliminar em 24h sem esperar meses por consulta.'"
+      },
+      "P1": {
+        code: "P1 • B2B Institucional",
+        title: "Inclusion Audit & Setup Escolar",
+        goal: "Blindagem jurídica de colégios privados perante a LBI e receita fixa B2B.",
+        ltv: "R$ 36.000,00/ano",
+        speed: "Média (30-60d)",
+        target: "Escolas privadas sob pressão de adaptação curricular.",
+        scope: "Auditoria in loco, assinatura técnica do PDI pela Psicopedagoga e capacitação docente em CAA.",
+        price: "R$ 2.000 a R$ 4.000/mês por colégio",
+        cost: "4 a 6 horas técnicas mensais",
+        pitch: "'Nós blindamos a sua escola contra autuações do Ministério Público através de laudos periciais externos.'"
+      },
+      "P2": {
+        code: "P2 • Setup Inicial",
+        title: "UTI de Transição (Setup Clínico)",
+        goal: "Choque de desenvolvimento de 90 dias e parametrização de software de CAA.",
+        ltv: "R$ 3.500,00 (Setup Único)",
+        speed: "Rápida (1-7d)",
+        target: "Crianças não-verbais, apraxia de fala ou recém-implantadas.",
+        scope: "Mês 1 intensivo (2-3x/sem), configuração do software TD Snap/PODD, avaliação bimodal e plano de metas.",
+        price: "R$ 3.000 a R$ 5.000 (Taxa de Implantação)",
+        cost: "Licença de software + 12 horas concentradas",
+        pitch: "'Instalamos a ferramenta de comunicação no primeiro mês para que seu filho ganhe voz imediata.'"
+      },
+      "P3": {
+        code: "P3 • Core B2C Recorrente",
+        title: "Programa Bimodal & CAA Recorrente",
+        goal: "Garantia de ARR previsível e autonomia comunicativa nas 168h semanais.",
+        ltv: "R$ 30.000,00 (12 meses)",
+        speed: "Rápida (Pós-UTI)",
+        target: "Famílias em processo contínuo de aquisição de linguagem.",
+        scope: "Contrato semestral com sessões clínicas, consultoria parental quinzenal e telemetria para médicos.",
+        price: "R$ 2.000 a R$ 3.500/mês",
+        cost: "4 horas clínicas mensais por paciente",
+        pitch: "'Garantimos que a comunicação do seu filho funcione na escola, no almoço e no parquinho, não apenas na sala de terapia.'"
+      },
+      "P4": {
+        code: "P4 • Escala One-to-Many",
+        title: "Rodas de Letramento Parental em CAA",
+        goal: "Multiplicação do faturamento horário através de treinamento de grupos aos sábados.",
+        ltv: "R$ 8.000 a R$ 12.000 por turma",
+        speed: "Média (Quinzenal)",
+        target: "Pais, babás e cuidadores de crianças com CAA.",
+        scope: "Encontros práticos em grupos de 6 a 10 famílias aos sábados para modelagem de rotinas.",
+        price: "R$ 800 a R$ 1.200 por família/mês",
+        cost: "3 horas técnicas para faturar até R$ 12k",
+        pitch: "'Aprenda na prática com outras famílias a transformar o tablet de comunicação em ferramenta de rotina.'"
+      },
+      "P5": {
+        code: "P5 • Upsell On-Demand",
+        title: "Shadowing & Mediação Escolar In Loco",
+        goal: "Eliminar crises em sala de aula e calibrar a mediadora in loco.",
+        ltv: "R$ 3.000 a R$ 5.000",
+        speed: "Sob demanda",
+        target: "Alunos com crises frequentes ou dificuldades de adaptação no recreio.",
+        scope: "Visita presencial das especialistas à escola do paciente para ajuste de rotinas e mediação.",
+        price: "R$ 600 a R$ 900 por visita técnica",
+        cost: "2 horas presenciais no bairro Castelo",
+        pitch: "'Vamos até a sala de aula do seu filho identificar e desarmar os gatilhos de crise.'"
+      }
+    };
+
+    const funnelStepsData = {
+      "b2c-1": {
+        tag: "Funil B2C • Etapa 1: Atração",
+        title: "Atração Comunitária e Digital (Google Search & Condomínios)",
+        evidence: "No Bairro Castelo, grande parte das famílias de alta renda reside em condomínios verticais. Buscas de fundo de funil ('Apraxia BH', 'Implante Coclear Fono') capturam famílias na dor aguda pós-diagnóstico.",
+        action: "Rodas de desenvolvimento nos condomínios da Miguel Perrela e anúncios cirúrgicos de Google Search.",
+        kpi: "Meta: 5 a 8 leads por evento • CAC < R$ 160,00."
+      },
+      "b2c-2": {
+        tag: "Funil B2C • Etapa 2: Validação",
+        title: "Nutrição e Prova de Vida (Instagram Founder-Led)",
+        evidence: "Famílias indicadas por médicos pesquisam a presença digital antes de fechar contratos de R$ 30k para validar a autoridade técnica da clínica.",
+        action: "Rotina Founder-Led (15 min/dia): Sócias produzem áudios e fotos de bastidores formatados por assistente.",
+        kpi: "Meta: Postagens diárias provando vida operacional da clínica."
+      },
+      "b2c-3": {
+        tag: "Funil B2C • Etapa 3: Conversão",
+        title: "Conversão em Contrato Semestral Value-Based",
+        evidence: "A venda por pacote semestral elimina cancelamentos por chuvas ou faltas e ancora o compromisso neurobiológico.",
+        action: "Avaliação de Prontidão (40 min) e apresentação do contrato semestral estruturado via ZapSign.",
+        kpi: "Meta: Fechamento superior a 40% das avaliações realizadas."
+      },
+      "b2c-4": {
+        tag: "Funil B2C • Etapa 4: Retenção",
+        title: "Retenção Contínua & Transição para Grupos",
+        evidence: "A transição pós-UTI de 90 dias para grupos parentais aos sábados amplia o LTV sem saturar horas 1:1.",
+        action: "Inclusão nas Rodas de Letramento Parental e emissão bimestral de telemetria médica.",
+        kpi: "Meta: Retenção média superior a 12 meses."
+      },
+      "b2b-1": {
+        tag: "Funil B2B • Etapa 1: Atração",
+        title: "Compliance com a LBI, Artigos LinkedIn & Ofício",
+        evidence: "A LBI veda cobrança de taxas extras para inclusão e pune colégios por omissão curricular.",
+        action: "Envio de ofício técnico para mantenedores oferecendo Auditoria de Compliance do PDI.",
+        kpi: "Meta: 3 reuniões agendadas a cada 10 colégios contatados."
+      },
+      "b2b-2": {
+        tag: "Funil B2B • Etapa 2: Capacitação",
+        title: "Palestra 'Filtro Clínico em Sala de Aula'",
+        evidence: "Professores sobrecarregados não sabem diferenciar indisciplina de desregulação sensorial.",
+        action: "Treinamento pedagógico de 1h com entrega de matrizes visuais de apoio.",
+        kpi: "Meta: 100% de adesão docente e recomendação do Hub."
+      },
+      "b2b-3": {
+        tag: "Funil B2B • Etapa 3: Canal Direto",
+        title: "Canal Direto de Encaminhamento Escolar",
+        evidence: "A recomendação vinda da coordenação pedagógica anula a resistência familiar ao diagnóstico.",
+        action: "A escola disponibiliza o link de triagem do Hub nos comunicados de alunos com queixas.",
+        kpi: "Meta: 15 a 20 alunos encaminhados por semestre por escola parceira."
+      },
+      "b2b-4": {
+        tag: "Funil B2B • Etapa 4: Dupla Monetização",
+        title: "Dupla Monetização (B2B Fixo + B2C Privado)",
+        evidence: "O contrato escolar financia custos fixos e o fluxo de alunos gera contratos particulares.",
+        action: "Contrato de assessoria mensal (R$ 2.500/mês) + conversão dos alunos no consultório.",
+        kpi: "Meta: R$ 36.000,00/ano em receita recorrente por escola."
+      },
+      "med-1": {
+        tag: "Funil Médico • Etapa 1: Mapeamento",
+        title: "Mapeamento de Filas de Espera Médicas",
+        evidence: "Neuropediatras de referência possuem filas de 60 a 90 dias, sobrecarregando a recepção.",
+        action: "Mapeamento dos 10 principais consultórios do vetor Pampulha.",
+        kpi: "Meta: 5 consultórios parceiros ativos no Mês 1."
+      },
+      "med-2": {
+        tag: "Funil Médico • Etapa 2: Secretárias",
+        title: "Ativação de Secretárias como Canal de Acolhimento",
+        evidence: "A secretária médica lida com o desespero das mães pedindo encaixes de urgência.",
+        action: "Entrega do Manual para Famílias em Fila de Espera na recepção.",
+        kpi: "Meta: 8 a 12 pacientes encaminhados por secretária parceira ao mês."
+      },
+      "med-3": {
+        tag: "Funil Médico • Etapa 3: UTI Pré-Consulta",
+        title: "UTI de Transição Pré-Consulta Médica",
+        evidence: "A estimulação precoce prepara a criança com dados de baseline para a consulta médica.",
+        action: "A criança passa por 8 semanas de estimulação e chega à consulta com relatório pronto.",
+        kpi: "Meta: 100% de conversão em acompanhamento continuado."
+      },
+      "med-4": {
+        tag: "Funil Médico • Etapa 4: Telemetria",
+        title: "Feedback Telemétrico & Prontuário Médico",
+        evidence: "Médicos fidelizam clínicas que devolvem gráficos quantitativos de ganho de fala.",
+        action: "Envio bimestral de relatório padronizado diretamente para o médico assistente.",
+        kpi: "Meta: Parceria médica contínua com custo zero de aquisição."
+      }
+    };
+
+    const metricDetailsData = {
+      "cac-ltv-b2c": {
+        tag: "Métrica Financeira • B2C",
+        title: "CAC e LTV no Modelo B2C",
+        evidence: "O CAC de R$ 50 a R$ 160 decorre de canais comunitários e busca de fundo de funil. O LTV de R$ 25k a R$ 35k baseia-se em contratos semestrais de casos graves (Apraxia e Implante Coclear).",
+        action: "Focar em pacientes de alta complexidade para assegurar retenção de 12 a 18 meses.",
+        kpi: "Razão LTV/CAC > 25:1 • Payback < 15 dias."
+      },
+      "ticket-conversao-escola": {
+        tag: "Métrica Financeira • B2B Escolas",
+        title: "Ticket B2B e Conversão Escolar",
+        evidence: "O valor de R$ 2.000 a R$ 4.000/mês por escola custa menos que duas mensalidades escolares normais. A conversão de alunos é alta porque vem chancelada pela direção.",
+        action: "Oferecer auditoria gratuita de um PDI para demonstrar blindagem à mantenedora.",
+        kpi: "Margem de Contribuição B2B > 85%."
+      },
+      "qualificacao-retencao-medico": {
+        tag: "Métrica Médica • Fast-Track",
+        title: "Qualificação 100% SQL e Retenção > 18 Meses",
+        evidence: "Encaminhamentos médicos têm diagnóstico formal, alta dor e urgência biológica, eliminando curiosos do funil.",
+        action: "Enviar relatórios quantitativos bimestrais para fidelizar o neuropediatra.",
+        kpi: "Show-up rate > 95% • Churn médico = 0%."
+      },
+      "MRR": {
+        tag: "Métrica Financeira • Receita Recorrente",
+        title: "Faturamento Mensal Recorrente (MRR)",
+        evidence: "Composto por 20 pacientes B2C (R$ 50k), 3 contratos escolares B2B (R$ 7,5k) e setups da UTI, totalizando previsibilidade de caixa sem depender de horas avulsas.",
+        action: "Auditar renovações semestrais com 60 dias de antecedência.",
+        kpi: "MRR Alvo: R$ 68.000,00/mês."
+      },
+      "ARR": {
+        tag: "Métrica Financeira • Receita Anual",
+        title: "Receita Anual Contratada (ARR: R$ 816.000,00)",
+        evidence: "Projeção anual do MRR que confere solidez patrimonial e atesta o monopólio regional do Hub no Castelo.",
+        action: "Manter taxa de renovação semestral acima de 85%.",
+        kpi: "ARR Alvo: > R$ 800.000,00."
+      },
+      "EBITDA": {
+        tag: "Métrica de Eficiência • Margem EBITDA",
+        title: "Margem EBITDA Operacional (> 80%)",
+        evidence: "Viabilizada pela ausência de gastos com tráfego pago frio e pela alíquota de 6% do Simples Nacional via Fator R.",
+        action: "Manter estrutura de custos fixos enxuta e expandir para grupos parentais One-to-Many.",
+        kpi: "Margem EBITDA Meta > 60%."
+      },
+      "Lucro": {
+        tag: "Métrica Financeira • Lucro Líquido Real",
+        title: "Lucro Líquido Mensal Pós-Fator R",
+        evidence: "Dedução dos custos fixos, licenças de software e alíquota de 6% do Simples Nacional com pró-labore de 28%.",
+        action: "Distribuir lucros isentos de IRPF para as sócias respeitando as travas do Fator R.",
+        kpi: "Rentabilidade Líquida Real > R$ 54.000,00/mês."
+      },
+      "Fator R": {
+        tag: "Planejamento Tributário • Simples Nacional",
+        title: "Economia Tributária do Fator R (Alíquota 6,0%)",
+        evidence: "Redução de 15,5% (Anexo V) para 6,0% (Anexo III) mantendo folha/pró-labore em 28,1% do faturamento bruto.",
+        action: "Monitorar mensalmente com a contabilidade a proporção folha/receita.",
+        kpi: "Economia de 9,5% sobre o faturamento (R$ 6.460/mês)."
+      },
+      "LTV": {
+        tag: "Métrica de Cliente • Lifetime Value",
+        title: "LTV Médio Familiar (R$ 33.500,00)",
+        evidence: "Soma do setup da UTI de Transição (R$ 3.500) com 12 meses de contrato semestral (R$ 2.500 x 12 = R$ 30.000).",
+        action: "Oferecer módulos de expansão de CAA e shadowing escolar para estender permanência para 18 meses.",
+        kpi: "LTV Alvo: > R$ 33.000,00 por família."
+      }
+    };
+
+    /* ========================================================================= */
     /* 3. MATRIZ EXAUSTIVA DE 65 CANAIS DE INTERCEPTAÇÃO (ONDA 0 A ONDA 4)       */
     /* ========================================================================= */
     const channelsData = [
@@ -4367,7 +4655,7 @@
       if (mode === 'SCALE_ONE_MANY' && btnScale) btnScale.className = "px-3 py-1.5 rounded-lg bg-amber-600 text-white font-bold transition shadow-sm text-xs";
 
       applyMetroRouteLighting();
-      serializeStateToUrl(isPushState);
+      serializeStateToUrl(false);
     }
 
     function applyMetroRouteLighting() {
@@ -4781,7 +5069,7 @@
       }
 
       renderChannelsTable(filtered);
-      serializeStateToUrl(isPushState);
+      serializeStateToUrl(false);
     }
 
     function sortMatrixTable(columnKey) {
@@ -5260,7 +5548,7 @@
       const hasWorker = CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO");
       const hasDirectKey = apiKey && apiKey.startsWith('AIzaSy');
 
-      // Tentativa Remota (com AbortController de 2.5s)
+      // Tenta conexão remota com limite estrito de 2500ms
       if ((hasWorker || hasDirectKey) && navigator.onLine) {
         try {
           const response = await callGeminiLiveApi(apiKey, userQuery);
@@ -5270,11 +5558,11 @@
           container.scrollTop = container.scrollHeight;
           return;
         } catch (err) {
-          console.warn("Gateway remoto indisponível (" + err.message + "). Acionando contingência local ACF.");
+          console.warn("Gateway remoto offline/timeout. Comutando para Motor Local ACF:", err.message);
         }
       }
 
-      // FALLBACK IMEDIATO: Motor Local ACF (0ms) com badge de contingência
+      // Contingência Imediata (0ms)
       aiMsg.classList.remove('animate-pulse');
 
       const badge = document.getElementById('copilot-mode-badge');
@@ -5287,6 +5575,66 @@
       
       aiMsg.innerHTML = originBadge + localResponse;
       container.scrollTop = container.scrollHeight;
+    }
+
+    async function callGeminiLiveApi(key, query) {
+      if (!navigator.onLine) {
+        throw new Error("Dispositivo offline.");
+      }
+
+      const cachedAcf = localStorage.getItem('cached_acf_kernel');
+      const acfSystemInstruction = cachedAcf || `=== PROTOCOLO EXECUTIVO: HUB DE ENGENHARIA DE INTEGRAÇÃO ===
+[LOCALIZAÇÃO]: Bairro Castelo & Pampulha — Belo Horizonte / MG
+[CORPO TÉCNICO]: Doutoramento em Fonoaudiologia (CAA/TAV/Bimodal) + Especialista em Neuroaprendizagem e Psicopedagogia (PDI/LBI).`;
+
+      const contextualQuery = `[Contexto: Hub de Neurodesenvolvimento Castelo/Pampulha BH - Fonoaudiologia & Psicopedagogia]\nPergunta: ${query}`;
+
+      const payload = {
+        systemInstruction: { parts: [{ text: acfSystemInstruction }] },
+        contents: [{ role: "user", parts: [{ text: contextualQuery }] }],
+        generationConfig: { temperature: 0.4, maxOutputTokens: 8192 }
+      };
+
+      if (CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO")) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 2500);
+
+        try {
+          const workerRes = await fetch(CLOUDFLARE_WORKER_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "gemini-2.5-flash",
+              apiVersion: "v1beta",
+              payload: payload
+            }),
+            signal: controller.signal
+          });
+
+          clearTimeout(timer);
+
+          if (!workerRes.ok) {
+            throw new Error(`Worker HTTP ${workerRes.status}`);
+          }
+
+          const data = await workerRes.json().catch(() => ({}));
+          const parts = data.candidates?.[0]?.content?.parts || [];
+          const textPart = parts.find(p => p.text && !p.thought) || parts[0];
+          
+          if (textPart && textPart.text) {
+            return formatAiResponse(textPart.text);
+          }
+          throw new Error("Payload vazio.");
+        } catch (fetchErr) {
+          clearTimeout(timer);
+          if (fetchErr.name === 'AbortError') {
+            throw new Error("Timeout na resposta remota (limite 2.5s excedido).");
+          }
+          throw fetchErr;
+        }
+      }
+
+      throw new Error("Nenhum gateway remoto disponível.");
     }
 
     /**
