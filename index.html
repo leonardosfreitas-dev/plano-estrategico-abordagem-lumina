@@ -135,21 +135,37 @@
       box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
     }
 
-    /* Estilos do Canvas SVG do Metro Map — Estabilizado SOTA */
+    /* Estilos do Canvas SVG do Metro Map — Estabilizado SOTA (Zero Jitter) */
     .metro-station-node {
       cursor: pointer;
       pointer-events: all;
+      outline: none;
     }
-    .metro-station-node circle {
-      transition: r 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), stroke-width 0.2s ease, filter 0.2s ease;
+    .metro-station-node .station-hitbox {
+      fill: transparent;
+      pointer-events: all;
+      cursor: pointer;
     }
-    .metro-station-node:hover circle.station-core {
-      r: 8px;
-      stroke-width: 5px;
+    .metro-station-node circle.station-halo {
+      transition: r 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), stroke-width 0.2s ease, filter 0.2s ease;
+    }
+    .metro-station-node circle.station-core {
+      transition: r 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), fill 0.2s ease;
     }
     .metro-station-node:hover circle.station-halo {
-      r: 16px;
-      stroke-width: 4px;
+      r: 15px;
+      stroke-width: 4.5px;
+    }
+    .metro-station-node:hover circle.station-core {
+      r: 7px;
+    }
+    /* Exceção harmônica para o Hub Central não encolher no hover */
+    #station-node-st-hub:hover circle.station-halo {
+      r: 26px;
+      stroke-width: 5px;
+    }
+    #station-node-st-hub:hover circle.station-core {
+      r: 14px;
     }
     .metro-station-node text {
       pointer-events: none;
@@ -158,11 +174,11 @@
     }
     .metro-station-node:hover text {
       fill: #ffffff;
-      font-weight: 900;
+      font-weight: 800;
     }
     .metro-line-path {
-      transition: stroke-width 0.3s ease, opacity 0.3s ease, stroke 0.3s ease;
       pointer-events: none;
+      transition: stroke-width 0.3s ease, opacity 0.3s ease;
     }
   </style>
 </head>
@@ -528,7 +544,7 @@
         </div>
 
         <!-- VIEWPORT DO CANVAS SVG INTERATIVO -->
-        <div id="metro-svg-container" class="w-full h-[520px] sm:h-[600px] bg-slate-900/90 rounded-xl border border-slate-800 cursor-grab active:cursor-grabbing overflow-hidden relative select-none">
+        <div id="metro-svg-container" style="touch-action: none;" class="w-full h-[520px] sm:h-[600px] bg-slate-900/90 rounded-xl border border-slate-800 cursor-grab active:cursor-grabbing overflow-hidden relative select-none">
           <svg id="metro-svg-canvas" viewBox="0 0 1200 750" class="w-full h-full">
             <defs>
               <!-- Filtros de Iluminação Neon para as Rotas -->
@@ -4177,6 +4193,9 @@
     let isMetroDragging = false;
     let metroStartX = 0;
     let metroStartY = 0;
+    let metroPointerDownX = 0;
+    let metroPointerDownY = 0;
+    let metroHasDragged = false;
     let currentMetroRouteMode = 'ALL';
 
     function initMetroMapCanvas() {
@@ -4207,26 +4226,37 @@
         linesLayer.appendChild(path);
       });
 
-      // 2. Renderiza Estações
+      // 2. Renderiza Estações com Hit-Box Proxy e Discriminação de Arrasto
       metroMapData.stations.forEach(st => {
         const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
         g.setAttribute("transform", `translate(${st.x}, ${st.y})`);
         g.setAttribute("class", "metro-station-node");
         g.setAttribute("id", `station-node-${st.id}`);
-        g.onclick = () => openChannelModal(st.channelId);
+        
+        g.addEventListener('click', (e) => {
+          if (!metroHasDragged) {
+            e.stopPropagation();
+            if (st.id === 'st-hub' && (!st.channelId || st.channelId === 0)) {
+              toggleCopilotDrawer("Explique detalhadamente a tese de Engenharia de Integração do Hub Placa-Mãe no Bairro Castelo e como ele orquestra a Fonoaudiologia e a Psicopedagogia.");
+            } else {
+              openChannelModal(st.channelId);
+            }
+          }
+        });
 
         if (st.id === 'st-hub') {
-          // Nó Central Destaque com Hit-Area Ampla
+          // Nó Central Destaque
           g.innerHTML = `
-            <circle r="40" fill="transparent" class="cursor-pointer station-hitbox" />
+            <circle r="45" class="station-hitbox" />
+            <circle r="28" fill="#14b8a6" opacity="0.25" class="animate-ping" />
             <circle class="station-halo" r="22" fill="#042f2e" stroke="#2dd4bf" stroke-width="4" filter="url(#glow-cyan)" />
             <circle class="station-core" r="12" fill="#14b8a6" />
             <text y="38" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="900" font-family="Inter">${st.name}</text>
           `;
         } else {
-          // Nós Normais com Hit-Area Invisível de 26px e Classes Específicas
+          // Nós Normais com Hit-Area Ampla de 26px
           g.innerHTML = `
-            <circle r="26" fill="transparent" class="cursor-pointer station-hitbox" />
+            <circle r="26" class="station-hitbox" />
             <circle class="station-halo" r="11" fill="#0f172a" stroke="${st.color}" stroke-width="3.5" />
             <circle class="station-core" r="5" fill="${st.color}" />
             <text y="24" text-anchor="middle" fill="#cbd5e1" font-size="10" font-weight="700" font-family="Inter">${st.name}</text>
@@ -4238,45 +4268,60 @@
       applyMetroRouteLighting();
     }
 
-    let metroPointerDownX = 0;
-    let metroPointerDownY = 0;
-    let metroHasDragged = false;
-
     function setupMetroMapEvents() {
       const container = document.getElementById('metro-svg-container');
       if (!container) return;
 
-      container.addEventListener('mousedown', (e) => {
-        // Se clicar em um nó de estação, não inicializa o arrasto do container
-        if (e.target.closest('.metro-station-node')) {
-          return;
-        }
-        isMetroDragging = true;
+      const handlePointerDown = (clientX, clientY, target) => {
         metroHasDragged = false;
-        metroPointerDownX = e.clientX;
-        metroPointerDownY = e.clientY;
-        metroStartX = e.clientX - metroPanX;
-        metroStartY = e.clientY - metroPanY;
+        metroPointerDownX = clientX;
+        metroPointerDownY = clientY;
+        metroStartX = clientX - metroPanX;
+        metroStartY = clientY - metroPanY;
+        isMetroDragging = true;
         container.style.cursor = 'grabbing';
-      });
+      };
 
-      window.addEventListener('mousemove', (e) => {
+      const handlePointerMove = (clientX, clientY) => {
         if (!isMetroDragging) return;
-        const deltaX = Math.abs(e.clientX - metroPointerDownX);
-        const deltaY = Math.abs(e.clientY - metroPointerDownY);
+        const deltaX = Math.abs(clientX - metroPointerDownX);
+        const deltaY = Math.abs(clientY - metroPointerDownY);
+
         if (deltaX > 4 || deltaY > 4) {
           metroHasDragged = true;
         }
-        metroPanX = e.clientX - metroStartX;
-        metroPanY = e.clientY - metroStartY;
-        applyMetroTransform();
-      });
 
-      window.addEventListener('mouseup', () => {
+        metroPanX = clientX - metroStartX;
+        metroPanY = clientY - metroStartY;
+        applyMetroTransform();
+      };
+
+      const handlePointerUp = () => {
         isMetroDragging = false;
         if (container) container.style.cursor = 'grab';
-      });
+      };
 
+      // Eventos de Mouse
+      container.addEventListener('mousedown', (e) => handlePointerDown(e.clientX, e.clientY, e.target));
+      window.addEventListener('mousemove', (e) => handlePointerMove(e.clientX, e.clientY));
+      window.addEventListener('mouseup', handlePointerUp);
+
+      // Eventos de Touch (Mobile & Tablet)
+      container.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          handlePointerDown(e.touches[0].clientX, e.touches[0].clientY, e.target);
+        }
+      }, { passive: true });
+
+      window.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 1) {
+          handlePointerMove(e.touches[0].clientX, e.touches[0].clientY);
+        }
+      }, { passive: true });
+
+      window.addEventListener('touchend', handlePointerUp);
+
+      // Zoom no Scroll
       container.addEventListener('wheel', (e) => {
         e.preventDefault();
         const zoomDelta = e.deltaY < 0 ? 1.1 : 0.9;
@@ -4328,7 +4373,7 @@
       const activeLineIds = {
         'ALL': ['L0', 'L1', 'L2', 'L3', 'L4'],
         'CRITICAL_30D': ['L0', 'L1'],
-        'B2B_SCHOOL': ['L2'],
+        'B2B_SCHOOL': ['L0', 'L2'],
         'SCALE_ONE_MANY': ['L3', 'L4']
       }[currentMetroRouteMode] || ['L0', 'L1', 'L2', 'L3', 'L4'];
 
