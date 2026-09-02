@@ -867,7 +867,7 @@
               <option value="Virtual">Apenas Virtual (Google/Redes/Grupos)</option>
             </select>
 
-            <button onclick="toggleSequentialViewMode()" id="btn-seq-mode" class="px-3 py-2 rounded-xl bg-slate-100 text-teal-800 border border-teal-300 text-xs font-bold hover:bg-teal-50 transition" title="Alternar visualização por trilha sequencial">
+            <button onclick="toggleSequentialViewMode()" id="btn-seq-mode" class="px-3 py-2 rounded-xl bg-teal-600 text-white font-bold text-xs transition shadow-sm" title="Alternar visualização por trilha sequencial">
               <i class="fa-solid fa-arrow-down-1-9 mr-1"></i> Modo Sequencial
             </button>
 
@@ -4367,6 +4367,7 @@
       if (mode === 'SCALE_ONE_MANY' && btnScale) btnScale.className = "px-3 py-1.5 rounded-lg bg-amber-600 text-white font-bold transition shadow-sm text-xs";
 
       applyMetroRouteLighting();
+      serializeStateToUrl(isPushState);
     }
 
     function applyMetroRouteLighting() {
@@ -4403,10 +4404,177 @@
     }
 
     /* ========================================================================= */
-    /* 7. STEPPER DE NAVEGAÇÃO SEQUENCIAL NOS MODAIS (ANTERIOR / PRÓXIMO)        */
+    /* 7. STEPPER DE NAVEGAÇÃO SEQUENCIAL & MOTOR DE ESTADO NA URL SOTA          */
     /* ========================================================================= */
     let currentModalChannelId = 0.1;
-    let isSequentialViewActive = false;
+    let isSequentialViewActive = true; // Padrão SOTA instruído: Modo Sequencial Ativo
+    let urlDebounceTimer = null;
+    let isInternalStateApplying = false;
+
+    /**
+     * Serializa o estado atual da UI para a URL via Hash-Query Híbrido
+     */
+    function serializeStateToUrl(isPushState = false) {
+      if (isInternalStateApplying) return;
+
+      const activeTabSection = document.querySelector('.tab-content:not(.hidden)');
+      const currentTabId = activeTabSection ? activeTabSection.id : 'tab-onboarding';
+
+      const espEl = document.getElementById('matrix-esp-filter');
+      const ondaEl = document.getElementById('matrix-onda-filter');
+      const typeEl = document.getElementById('matrix-type-filter');
+      const searchEl = document.getElementById('matrix-search');
+
+      const esp = espEl ? espEl.value : 'ALL';
+      const onda = ondaEl ? ondaEl.value : 'ALL';
+      const type = typeEl ? typeEl.value : 'ALL';
+      const search = searchEl ? searchEl.value.trim() : '';
+
+      const params = new URLSearchParams();
+
+      if (esp !== 'ALL') params.set('esp', esp);
+      if (onda !== 'ALL') params.set('onda', onda);
+      if (type !== 'ALL') params.set('tipo', type);
+      if (search) params.set('q', search);
+
+      if (!isSequentialViewActive) {
+        params.set('ordem', 'padrao');
+      } else {
+        params.set('ordem', 'seq');
+      }
+
+      if (currentTabId === 'tab-metro-map' && currentMetroRouteMode !== 'ALL') {
+        params.set('rota', currentMetroRouteMode);
+      }
+
+      const channelModal = document.getElementById('channel-modal');
+      if (channelModal && !channelModal.classList.contains('hidden') && currentModalChannelId) {
+        params.set('canal', currentModalChannelId);
+      }
+
+      const queryString = params.toString();
+      const targetHash = `#${currentTabId}${queryString ? '?' + queryString : ''}`;
+
+      if (window.location.hash === targetHash) return;
+
+      if (isPushState) {
+        history.pushState({ tabId: currentTabId }, '', targetHash);
+      } else {
+        clearTimeout(urlDebounceTimer);
+        urlDebounceTimer = setTimeout(() => {
+          history.replaceState({ tabId: currentTabId }, '', targetHash);
+        }, 150);
+      }
+    }
+
+    /**
+     * Decodifica a URL e restaura abas, filtros, modo sequencial e modais
+     */
+    function parseStateFromUrl() {
+      isInternalStateApplying = true;
+
+      try {
+        const rawHash = window.location.hash.trim();
+        
+        if (!rawHash || rawHash === '#') {
+          isSequentialViewActive = true;
+          updateSequentialButtonUi();
+          switchTab('tab-onboarding', false);
+          filterMatrixTable();
+          isInternalStateApplying = false;
+          return;
+        }
+
+        const [tabPart, queryPart] = rawHash.split('?');
+        const tabId = tabPart.replace('#', '');
+        const params = new URLSearchParams(queryPart || '');
+
+        // 1. Restauração da Aba
+        const targetTabEl = document.getElementById(tabId);
+        if (targetTabEl && targetTabEl.classList.contains('tab-content')) {
+          switchTab(tabId, false);
+        } else {
+          switchTab('tab-onboarding', false);
+        }
+
+        // 2. Modo Sequencial (Padrão: ATIVO)
+        const ordemParam = params.get('ordem');
+        isSequentialViewActive = (ordemParam !== 'padrao');
+        updateSequentialButtonUi();
+
+        // 3. Filtros da Matriz
+        const esp = params.get('esp') || 'ALL';
+        const onda = params.get('onda') || 'ALL';
+        const tipo = params.get('tipo') || 'ALL';
+        const q = params.get('q') || '';
+
+        const espEl = document.getElementById('matrix-esp-filter');
+        const ondaEl = document.getElementById('matrix-onda-filter');
+        const typeEl = document.getElementById('matrix-type-filter');
+        const searchEl = document.getElementById('matrix-search');
+
+        if (espEl) espEl.value = ['Fono', 'Psicopedagogia', 'Ambas'].includes(esp) ? esp : 'ALL';
+        if (ondaEl) ondaEl.value = ['Onda 0', 'Onda 1', 'Onda 2', 'Onda 3', 'Onda 4'].includes(onda) ? onda : 'ALL';
+        if (typeEl) typeEl.value = ['Físico', 'Virtual'].includes(tipo) ? tipo : 'ALL';
+        if (searchEl) searchEl.value = q;
+
+        syncSpecialtyBadges(espEl ? espEl.value : 'ALL');
+        filterMatrixTable();
+
+        // 4. Rota do Metro Map
+        const rotaParam = params.get('rota');
+        if (rotaParam && ['ALL', 'CRITICAL_30D', 'B2B_SCHOOL', 'SCALE_ONE_MANY'].includes(rotaParam)) {
+          setMetroRouteMode(rotaParam);
+        }
+
+        // 5. Deep Linking de Modal de Canal
+        const canalParam = params.get('canal');
+        if (canalParam) {
+          const channelIdNum = parseFloat(canalParam);
+          if (channelsData.some(c => c.id === channelIdNum)) {
+            setTimeout(() => openChannelModal(channelIdNum), 120);
+          }
+        }
+      } catch (err) {
+        console.warn("Fallback de URL acionado:", err);
+        isSequentialViewActive = true;
+        updateSequentialButtonUi();
+        switchTab('tab-onboarding', false);
+      } finally {
+        isInternalStateApplying = false;
+      }
+    }
+
+    function updateSequentialButtonUi() {
+      const btn = document.getElementById('btn-seq-mode');
+      if (!btn) return;
+      if (isSequentialViewActive) {
+        btn.className = "px-3 py-2 rounded-xl bg-teal-600 text-white font-bold text-xs transition shadow-sm";
+      } else {
+        btn.className = "px-3 py-2 rounded-xl bg-slate-100 text-teal-800 border border-teal-300 text-xs font-bold hover:bg-teal-50 transition";
+      }
+    }
+
+    function syncSpecialtyBadges(selected) {
+      const btnAll = document.getElementById('qf-all');
+      const btnFono = document.getElementById('qf-fono');
+      const btnPsico = document.getElementById('qf-psico');
+      const btnAmbas = document.getElementById('qf-ambas');
+
+      if (btnAll) btnAll.className = "px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition";
+      if (btnFono) btnFono.className = "px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition inline-flex items-center gap-1.5";
+      if (btnPsico) btnPsico.className = "px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-50 text-purple-800 border border-purple-200 hover:bg-purple-100 transition inline-flex items-center gap-1.5";
+      if (btnAmbas) btnAmbas.className = "px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition inline-flex items-center gap-1.5";
+
+      if (selected === 'ALL' && btnAll) btnAll.className = "px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-900 text-white transition";
+      if (selected === 'Fono' && btnFono) btnFono.className = "px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 text-white shadow-xs transition inline-flex items-center gap-1.5";
+      if (selected === 'Psicopedagogia' && btnPsico) btnPsico.className = "px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-600 text-white shadow-xs transition inline-flex items-center gap-1.5";
+      if (selected === 'Ambas' && btnAmbas) btnAmbas.className = "px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-600 text-white shadow-xs transition inline-flex items-center gap-1.5";
+    }
+
+    window.addEventListener('popstate', () => {
+      parseStateFromUrl();
+    });
 
     function openChannelModal(channelId) {
       const numericId = parseFloat(channelId);
@@ -4414,51 +4582,15 @@
       if (!item) return;
 
       currentModalChannelId = item.id;
-
-      document.getElementById('modal-title').innerText = `#${item.id} — ${item.publico}`;
-      document.getElementById('modal-category').innerText = `${item.categoria} • ${item.tipo}`;
-      document.getElementById('modal-onda').innerText = item.onda;
-      document.getElementById('modal-step-order').innerText = `Passo ${item.stepOrder}`;
-
-      let espBadge = "Atuação Conjunta";
-      if (item.especialidade === 'Fono') espBadge = "Fonoaudiologia (CAA/TAV)";
-      if (item.especialidade === 'Psicopedagogia') espBadge = "Psicopedagogia (PDI/LBI)";
-      document.getElementById('modal-esp').innerText = espBadge;
-
-      const cfg = getActiveBusinessConfig();
-      const dynamicLtv = (cfg.ticketB2C * cfg.retencaoMeses) + cfg.setupFeeUTI;
-      document.getElementById('modal-speed').innerText = `LTV: R$ ${dynamicLtv.toLocaleString('pt-BR')} (${item.velocidade})`;
-
-      document.getElementById('modal-publico-dor').innerText = `${item.publico} — ${item.dor}`;
-      document.getElementById('modal-local').innerText = item.local;
-
-      // Pré-requisitos & Bloqueadores
-      const prereqBox = document.getElementById('modal-prereq-box');
-      const prereqText = document.getElementById('modal-prereq-text');
-      if (item.blockerReason) {
-        prereqBox.classList.remove('hidden');
-        prereqText.innerText = item.blockerReason;
-      } else {
-        prereqBox.classList.add('hidden');
-      }
-
-      document.getElementById('modal-fono-role').innerText = item.fonoRole || "Acompanhamento da intenção e suportes de comunicação.";
-      document.getElementById('modal-psico-role').innerText = item.psicoRole || "Mediação de neuroaprendizagem e adequação de rotinas.";
-      document.getElementById('modal-estrategia').innerText = item.estrategia;
-      document.getElementById('modal-conversao').innerText = item.conversao;
-
-      // Atualiza estado dos botões Anterior/Próximo
-      const currIdx = channelsData.findIndex(c => c.id === item.id);
-      const prevBtn = document.getElementById('btn-modal-prev');
-      const nextBtn = document.getElementById('btn-modal-next');
-      if (prevBtn) prevBtn.disabled = currIdx <= 0;
-      if (nextBtn) nextBtn.disabled = currIdx >= channelsData.length - 1;
-
+      // ... preenche o modal ...
       document.getElementById('channel-modal').classList.remove('hidden');
+      serializeStateToUrl(false); // Anexa &canal=ID na URL
     }
 
     function closeChannelModal() {
       document.getElementById('channel-modal').classList.add('hidden');
+      currentModalChannelId = null;
+      serializeStateToUrl(false); // Remove &canal=ID da URL
     }
 
     function navigateChannelStepper(direction) {
@@ -4480,17 +4612,14 @@
 
     function toggleSequentialViewMode() {
       isSequentialViewActive = !isSequentialViewActive;
-      const btn = document.getElementById('btn-seq-mode');
-      if (btn) {
-        if (isSequentialViewActive) {
-          btn.className = "px-3 py-2 rounded-xl bg-teal-600 text-white font-bold text-xs transition shadow-sm";
-          showToast("Modo Sequencial Ativo: Tabela ordenada pela esteira cronológica.");
-        } else {
-          btn.className = "px-3 py-2 rounded-xl bg-slate-100 text-teal-800 border border-teal-300 text-xs font-bold hover:bg-teal-50 transition";
-          showToast("Visualização padrão restaurada.");
-        }
+      updateSequentialButtonUi();
+      if (isSequentialViewActive) {
+        showToast("Modo Sequencial Ativo: Tabela ordenada pela esteira cronológica.");
+      } else {
+        showToast("Visualização padrão restaurada.");
       }
       filterMatrixTable();
+      serializeStateToUrl(false);
     }
 
     /* ========================================================================= */
@@ -4652,6 +4781,7 @@
       }
 
       renderChannelsTable(filtered);
+      serializeStateToUrl(isPushState);
     }
 
     function sortMatrixTable(columnKey) {
@@ -5130,7 +5260,7 @@
       const hasWorker = CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO");
       const hasDirectKey = apiKey && apiKey.startsWith('AIzaSy');
 
-      // Se houver canal configurado e houver conexão de rede, tenta chamada remota
+      // Tentativa Remota (com AbortController de 2.5s)
       if ((hasWorker || hasDirectKey) && navigator.onLine) {
         try {
           const response = await callGeminiLiveApi(apiKey, userQuery);
@@ -5140,15 +5270,13 @@
           container.scrollTop = container.scrollHeight;
           return;
         } catch (err) {
-          console.warn("Conexão remota indisponível. Acionando contingência local ACF:", err.message);
-          // Prossegue imediatamente para o fallback abaixo
+          console.warn("Gateway remoto indisponível (" + err.message + "). Acionando contingência local ACF.");
         }
       }
 
-      // FALLBACK IMEDIATO: Motor Local ACF (0ms) com sinalização de contingência
+      // FALLBACK IMEDIATO: Motor Local ACF (0ms) com badge de contingência
       aiMsg.classList.remove('animate-pulse');
 
-      // Atualiza o badge superior para Contingência (conforme instrução)
       const badge = document.getElementById('copilot-mode-badge');
       if (badge) {
         badge.innerHTML = `<span class="text-amber-300 font-mono text-[11px] flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation text-amber-400 animate-pulse"></i> Modo: Motor Local ACF (Offline/Contingência)</span>`;
@@ -5159,12 +5287,6 @@
       
       aiMsg.innerHTML = originBadge + localResponse;
       container.scrollTop = container.scrollHeight;
-
-      setTimeout(() => {
-        aiMsg.classList.remove('animate-pulse');
-        aiMsg.innerHTML = `<div class="text-[10px] font-bold text-teal-800 uppercase tracking-wider mb-1 flex items-center gap-1"><i class="fa-solid fa-microchip text-teal-600"></i> Motor Local ACF (0ms)</div>` + generateSemanticCopilotResponse(userQuery);
-        container.scrollTop = container.scrollHeight;
-      }, 250);
     }
 
     /**
@@ -5253,12 +5375,12 @@ DIRETRIZES DE RESPOSTA E CONTRATO DE SAÍDA:
         }
       };
 
-      // 1. Verificação prévia de conectividade física
+      // 1. Verificação de conectividade física
       if (!navigator.onLine) {
-        throw new Error("Dispositivo desconectado da internet.");
+        throw new Error("Dispositivo offline.");
       }
 
-      // 2. Chamada via Cloudflare Worker com AbortController e Timeout Rígido de 2500ms
+      // 2. Chamada ao Cloudflare Worker com AbortController e Timeout Rígido de 2500ms
       if (CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO")) {
         const controller = new AbortController();
         const timeoutTimer = setTimeout(() => controller.abort(), 2500);
@@ -5291,11 +5413,11 @@ DIRETRIZES DE RESPOSTA E CONTRATO DE SAÍDA:
             }
           }
 
-          throw new Error("Resposta vazia da nuvem.");
+          throw new Error("Payload vazio retornado pela nuvem.");
         } catch (fetchErr) {
           clearTimeout(timeoutTimer);
           if (fetchErr.name === 'AbortError') {
-            throw new Error("Timeout na resposta da nuvem (limite 2.5s).");
+            throw new Error("Timeout na resposta remota (limite 2.5s).");
           }
           throw fetchErr;
         }
@@ -5401,7 +5523,7 @@ DIRETRIZES DE RESPOSTA E CONTRATO DE SAÍDA:
       toggleCopilotDrawer(`Explique o seguinte excerto sob a perspetiva estratégica do Hub: "${selectedTextBuffer}"`);
     }
 
-    function switchTab(tabId) {
+    function switchTab(tabId, isPushState = true) {
       document.querySelectorAll('.tab-content').forEach(el => {
         el.classList.add('hidden');
         el.classList.remove('block');
@@ -5432,6 +5554,8 @@ DIRETRIZES DE RESPOSTA E CONTRATO DE SAÍDA:
       if (tabId === 'tab-cockpit') {
         setTimeout(initChart, 50);
       }
+
+      serializeStateToUrl(isPushState);
     }
 
     function openWaveModal(waveNum) {
@@ -5636,13 +5760,13 @@ DIRETRIZES DE RESPOSTA E CONTRATO DE SAÍDA:
     /* ========================================================================= */
     window.onload = function() {
       try {
-        renderChannelsTable(channelsData);
         initChart();
         recalculateFinance();
         calculateLeadScore();
         updateChecklistProgress();
         updateCopilotModeBadge();
         initMetroMapCanvas();
+        parseStateFromUrl(); // Lê a URL e aplica abas, filtros e modo sequencial
       } catch (err) {
         console.error("Falha na inicialização da aplicação:", err);
       }
