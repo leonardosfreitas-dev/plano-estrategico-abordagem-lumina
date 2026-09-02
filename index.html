@@ -5130,7 +5130,8 @@
       const hasWorker = CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO");
       const hasDirectKey = apiKey && apiKey.startsWith('AIzaSy');
 
-      if (hasWorker || hasDirectKey) {
+      // Se houver canal configurado e houver conexão de rede, tenta chamada remota
+      if ((hasWorker || hasDirectKey) && navigator.onLine) {
         try {
           const response = await callGeminiLiveApi(apiKey, userQuery);
           aiMsg.classList.remove('animate-pulse');
@@ -5139,19 +5140,25 @@
           container.scrollTop = container.scrollHeight;
           return;
         } catch (err) {
-          console.warn("Falha na chamada Gemini API Live / Worker:", err);
-          aiMsg.classList.remove('animate-pulse');
-          const cleanErrMsg = typeof err.message === 'string' ? err.message : 'Instabilidade momentânea no gateway de IA';
-
-          aiMsg.innerHTML = `<div class="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-xs mb-2">
-            <b class="block font-bold mb-0.5 flex items-center gap-1"><i class="fa-solid fa-triangle-exclamation text-amber-600"></i> Aviso de Conexão Online:</b>
-            <span class="text-[11px] leading-relaxed text-slate-700">${cleanErrMsg}</span>
-            <div class="mt-1 text-[11px] text-teal-800 font-semibold flex items-center gap-1"><i class="fa-solid fa-shield-halved text-teal-600"></i> Exibindo inteligência do Motor Local ACF (0ms):</div>
-          </div>` + generateSemanticCopilotResponse(userQuery);
-          container.scrollTop = container.scrollHeight;
-          return;
+          console.warn("Conexão remota indisponível. Acionando contingência local ACF:", err.message);
+          // Prossegue imediatamente para o fallback abaixo
         }
       }
+
+      // FALLBACK IMEDIATO: Motor Local ACF (0ms) com sinalização de contingência
+      aiMsg.classList.remove('animate-pulse');
+
+      // Atualiza o badge superior para Contingência (conforme instrução)
+      const badge = document.getElementById('copilot-mode-badge');
+      if (badge) {
+        badge.innerHTML = `<span class="text-amber-300 font-mono text-[11px] flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation text-amber-400 animate-pulse"></i> Modo: Motor Local ACF (Offline/Contingência)</span>`;
+      }
+
+      const localResponse = generateSemanticCopilotResponse(userQuery);
+      const originBadge = `<div class="text-[10px] font-bold text-teal-800 uppercase tracking-wider mb-1 flex items-center gap-1"><i class="fa-solid fa-microchip text-teal-600"></i> Motor Local ACF (Contingência Instantânea)</div>`;
+      
+      aiMsg.innerHTML = originBadge + localResponse;
+      container.scrollTop = container.scrollHeight;
 
       setTimeout(() => {
         aiMsg.classList.remove('animate-pulse');
@@ -5246,41 +5253,52 @@ DIRETRIZES DE RESPOSTA E CONTRATO DE SAÍDA:
         }
       };
 
-      // 1. Chamada via Cloudflare Worker com Auto-Retry inteligente
+      // 1. Verificação prévia de conectividade física
+      if (!navigator.onLine) {
+        throw new Error("Dispositivo desconectado da internet.");
+      }
+
+      // 2. Chamada via Cloudflare Worker com AbortController e Timeout Rígido de 2500ms
       if (CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO")) {
-        let lastError = null;
+        const controller = new AbortController();
+        const timeoutTimer = setTimeout(() => controller.abort(), 2500);
 
-        for (let attempt = 1; attempt <= 2; attempt++) {
-          try {
-            const workerRes = await fetch(CLOUDFLARE_WORKER_URL, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                model: "gemini-2.5-flash",
-                apiVersion: "v1beta",
-                payload: payload
-              })
-            });
+        try {
+          const workerRes = await fetch(CLOUDFLARE_WORKER_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "gemini-2.5-flash",
+              apiVersion: "v1beta",
+              payload: payload
+            }),
+            signal: controller.signal
+          });
 
-            const data = await workerRes.json().catch(() => ({}));
+          clearTimeout(timeoutTimer);
 
-            if (workerRes.ok && data.candidates && data.candidates.length > 0) {
-              const parts = data.candidates[0]?.content?.parts || [];
-              const textPart = parts.find(p => p.text && !p.thought) || parts[0];
-              return formatAiResponse(textPart ? textPart.text : "Resposta processada com sucesso.");
-            }
-
-            const msg = data.error?.message || (typeof data.error === 'string' ? data.error : null) || data.message || `HTTP ${workerRes.status}`;
-            lastError = new Error(msg);
-
-            if (attempt === 1) await new Promise(r => setTimeout(r, 800));
-          } catch (netErr) {
-            lastError = netErr;
-            if (attempt === 1) await new Promise(r => setTimeout(r, 800));
+          if (!workerRes.ok) {
+            throw new Error(`Worker HTTP ${workerRes.status}`);
           }
-        }
 
-        throw lastError || new Error("Falha ao comunicar com o Cloudflare Worker.");
+          const data = await workerRes.json().catch(() => ({}));
+
+          if (data.candidates && data.candidates.length > 0) {
+            const parts = data.candidates[0]?.content?.parts || [];
+            const textPart = parts.find(p => p.text && !p.thought) || parts[0];
+            if (textPart && textPart.text) {
+              return formatAiResponse(textPart.text);
+            }
+          }
+
+          throw new Error("Resposta vazia da nuvem.");
+        } catch (fetchErr) {
+          clearTimeout(timeoutTimer);
+          if (fetchErr.name === 'AbortError') {
+            throw new Error("Timeout na resposta da nuvem (limite 2.5s).");
+          }
+          throw fetchErr;
+        }
       }
 
       // 2. Chamada direta de contingência
