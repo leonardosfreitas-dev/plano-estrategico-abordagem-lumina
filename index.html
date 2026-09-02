@@ -547,24 +547,24 @@
         <div id="metro-svg-container" style="touch-action: none;" class="w-full h-[520px] sm:h-[600px] bg-slate-900/90 rounded-xl border border-slate-800 cursor-grab active:cursor-grabbing overflow-hidden relative select-none">
           <svg id="metro-svg-canvas" viewBox="0 0 1200 750" class="w-full h-full">
             <defs>
-              <!-- Filtros de Iluminação Neon para as Rotas -->
-              <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%">
+              <!-- Filtros de Iluminação Neon com userSpaceOnUse (Suporta linhas perfeitamente verticais/horizontais) -->
+              <filter id="glow-cyan" filterUnits="userSpaceOnUse" x="-10%" y="-10%" width="120%" height="120%">
                 <feGaussianBlur stdDeviation="5" result="blur" />
                 <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
               </filter>
-              <filter id="glow-rose" x="-20%" y="-20%" width="140%" height="140%">
+              <filter id="glow-rose" filterUnits="userSpaceOnUse" x="-10%" y="-10%" width="120%" height="120%">
                 <feGaussianBlur stdDeviation="5" result="blur" />
                 <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
               </filter>
-              <filter id="glow-indigo" x="-20%" y="-20%" width="140%" height="140%">
+              <filter id="glow-indigo" filterUnits="userSpaceOnUse" x="-10%" y="-10%" width="120%" height="120%">
                 <feGaussianBlur stdDeviation="5" result="blur" />
                 <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
               </filter>
-              <filter id="glow-amber" x="-20%" y="-20%" width="140%" height="140%">
+              <filter id="glow-amber" filterUnits="userSpaceOnUse" x="-10%" y="-10%" width="120%" height="120%">
                 <feGaussianBlur stdDeviation="5" result="blur" />
                 <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
               </filter>
-              <filter id="glow-emerald" x="-20%" y="-20%" width="140%" height="140%">
+              <filter id="glow-emerald" filterUnits="userSpaceOnUse" x="-10%" y="-10%" width="120%" height="120%">
                 <feGaussianBlur stdDeviation="5" result="blur" />
                 <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
               </filter>
