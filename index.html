@@ -4870,15 +4870,85 @@
       if (!item) return;
 
       currentModalChannelId = item.id;
-      // ... preenche o modal ...
-      document.getElementById('channel-modal').classList.remove('hidden');
-      serializeStateToUrl(false); // Anexa &canal=ID na URL
+
+      // 1. Título, Categoria e Tipo
+      const titleEl = document.getElementById('modal-title');
+      const catEl = document.getElementById('modal-category');
+      if (titleEl) titleEl.innerText = `#${item.id} — ${item.publico}`;
+      if (catEl) catEl.innerText = `${item.categoria || 'Canal'} • ${item.tipo || 'Geral'}`;
+
+      // 2. Metadados de Topo
+      const ondaEl = document.getElementById('modal-onda');
+      const stepEl = document.getElementById('modal-step-order');
+      const espEl = document.getElementById('modal-esp');
+      const speedEl = document.getElementById('modal-speed');
+
+      if (ondaEl) ondaEl.innerText = item.onda || 'Onda 1';
+      if (stepEl) stepEl.innerText = `Passo ${item.stepOrder || item.id}`;
+
+      let espBadge = "Atuação Conjunta";
+      if (item.especialidade === 'Fono') espBadge = "Fonoaudiologia (CAA/TAV)";
+      if (item.especialidade === 'Psicopedagogia') espBadge = "Psicopedagogia (PDI/LBI)";
+      if (espEl) espEl.innerText = espBadge;
+
+      const cfg = getActiveBusinessConfig();
+      const dynamicLtv = (cfg.ticketB2C * cfg.retencaoMeses) + cfg.setupFeeUTI;
+      if (speedEl) speedEl.innerText = `LTV: R$ ${dynamicLtv.toLocaleString('pt-BR')} (${item.velocidade || 'Média'})`;
+
+      // 3. Público-Alvo, Dor e Localização
+      const dorEl = document.getElementById('modal-publico-dor');
+      const localEl = document.getElementById('modal-local');
+      if (dorEl) dorEl.innerText = `${item.publico} — ${item.dor}`;
+      if (localEl) localEl.innerText = item.local;
+
+      // 4. Bloqueadores e Pré-requisitos
+      const prereqBox = document.getElementById('modal-prereq-box');
+      const prereqText = document.getElementById('modal-prereq-text');
+      if (prereqBox && prereqText) {
+        if (item.blockerReason) {
+          prereqBox.classList.remove('hidden');
+          prereqText.innerText = item.blockerReason;
+        } else {
+          prereqBox.classList.add('hidden');
+        }
+      }
+
+      // 5. Atribuições Clínicas Fono vs Psico
+      const fonoEl = document.getElementById('modal-fono-role');
+      const psicoEl = document.getElementById('modal-psico-role');
+      if (fonoEl) fonoEl.innerText = item.fonoRole || "Acompanhamento da intenção comunicativa e tecnologia assistiva.";
+      if (psicoEl) psicoEl.innerText = item.psicoRole || "Mediação de neuroaprendizagem e adequação curricular.";
+
+      // 6. Estratégia Narrativa e Conversão
+      const estEl = document.getElementById('modal-estrategia');
+      const convEl = document.getElementById('modal-conversao');
+      if (estEl) estEl.innerText = item.estrategia || "";
+      if (convEl) convEl.innerText = item.conversao || "";
+
+      // 7. Navegação Sequencial (Stepper Anterior / Próximo)
+      const currIdx = channelsData.findIndex(c => c.id === item.id);
+      const prevBtn = document.getElementById('btn-modal-prev');
+      const nextBtn = document.getElementById('btn-modal-next');
+      if (prevBtn) prevBtn.disabled = currIdx <= 0;
+      if (nextBtn) nextBtn.disabled = currIdx >= channelsData.length - 1;
+
+      // 8. Exibição e Sincronização na URL (Garante Flexbox Ativo)
+      const modal = document.getElementById('channel-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+      serializeStateToUrl(false);
     }
 
     function closeChannelModal() {
-      document.getElementById('channel-modal').classList.add('hidden');
+      const modal = document.getElementById('channel-modal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
       currentModalChannelId = null;
-      serializeStateToUrl(false); // Remove &canal=ID da URL
+      serializeStateToUrl(false);
     }
 
     function navigateChannelStepper(direction) {
@@ -5577,66 +5647,7 @@
       container.scrollTop = container.scrollHeight;
     }
 
-    async function callGeminiLiveApi(key, query) {
-      if (!navigator.onLine) {
-        throw new Error("Dispositivo offline.");
-      }
-
-      const cachedAcf = localStorage.getItem('cached_acf_kernel');
-      const acfSystemInstruction = cachedAcf || `=== PROTOCOLO EXECUTIVO: HUB DE ENGENHARIA DE INTEGRAÇÃO ===
-[LOCALIZAÇÃO]: Bairro Castelo & Pampulha — Belo Horizonte / MG
-[CORPO TÉCNICO]: Doutoramento em Fonoaudiologia (CAA/TAV/Bimodal) + Especialista em Neuroaprendizagem e Psicopedagogia (PDI/LBI).`;
-
-      const contextualQuery = `[Contexto: Hub de Neurodesenvolvimento Castelo/Pampulha BH - Fonoaudiologia & Psicopedagogia]\nPergunta: ${query}`;
-
-      const payload = {
-        systemInstruction: { parts: [{ text: acfSystemInstruction }] },
-        contents: [{ role: "user", parts: [{ text: contextualQuery }] }],
-        generationConfig: { temperature: 0.4, maxOutputTokens: 8192 }
-      };
-
-      if (CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO")) {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 2500);
-
-        try {
-          const workerRes = await fetch(CLOUDFLARE_WORKER_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              model: "gemini-2.5-flash",
-              apiVersion: "v1beta",
-              payload: payload
-            }),
-            signal: controller.signal
-          });
-
-          clearTimeout(timer);
-
-          if (!workerRes.ok) {
-            throw new Error(`Worker HTTP ${workerRes.status}`);
-          }
-
-          const data = await workerRes.json().catch(() => ({}));
-          const parts = data.candidates?.[0]?.content?.parts || [];
-          const textPart = parts.find(p => p.text && !p.thought) || parts[0];
-          
-          if (textPart && textPart.text) {
-            return formatAiResponse(textPart.text);
-          }
-          throw new Error("Payload vazio.");
-        } catch (fetchErr) {
-          clearTimeout(timer);
-          if (fetchErr.name === 'AbortError') {
-            throw new Error("Timeout na resposta remota (limite 2.5s excedido).");
-          }
-          throw fetchErr;
-        }
-      }
-
-      throw new Error("Nenhum gateway remoto disponível.");
-    }
-
+    
     /**
      * Higienizador, Formatador Tipográfico & Renderizador de Action Chips SOTA
      */
@@ -5728,18 +5739,19 @@ DIRETRIZES DE RESPOSTA E CONTRATO DE SAÍDA:
         throw new Error("Dispositivo offline.");
       }
 
-      // 2. Chamada ao Cloudflare Worker com AbortController e Timeout Rígido de 2500ms
+      // 2. Chamada ao Cloudflare Worker com Modelo de Produção e Timeout Realista (7000ms)
       if (CLOUDFLARE_WORKER_URL && !CLOUDFLARE_WORKER_URL.includes("SEU_SUBDOMINIO")) {
         const controller = new AbortController();
-        const timeoutTimer = setTimeout(() => controller.abort(), 2500);
+        const timeoutTimer = setTimeout(() => controller.abort(), 7000); // 7s permite cold-start + geração
 
         try {
           const workerRes = await fetch(CLOUDFLARE_WORKER_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              model: "gemini-2.5-flash",
+              model: "gemini-1.5-flash", // Modelo válido na API do Google
               apiVersion: "v1beta",
+              apiKey: key || undefined,
               payload: payload
             }),
             signal: controller.signal
@@ -5748,7 +5760,9 @@ DIRETRIZES DE RESPOSTA E CONTRATO DE SAÍDA:
           clearTimeout(timeoutTimer);
 
           if (!workerRes.ok) {
-            throw new Error(`Worker HTTP ${workerRes.status}`);
+            const errData = await workerRes.json().catch(() => ({}));
+            const errMsg = errData.error?.message || errData.message || `HTTP ${workerRes.status}`;
+            throw new Error(`Worker: ${errMsg}`);
           }
 
           const data = await workerRes.json().catch(() => ({}));
@@ -5765,7 +5779,7 @@ DIRETRIZES DE RESPOSTA E CONTRATO DE SAÍDA:
         } catch (fetchErr) {
           clearTimeout(timeoutTimer);
           if (fetchErr.name === 'AbortError') {
-            throw new Error("Timeout na resposta remota (limite 2.5s).");
+            throw new Error("Timeout na resposta remota (limite de 7s excedido).");
           }
           throw fetchErr;
         }
@@ -5774,7 +5788,7 @@ DIRETRIZES DE RESPOSTA E CONTRATO DE SAÍDA:
       // 2. Chamada direta de contingência
       const sanitizedKey = sanitizeApiKey(key);
       if (sanitizedKey && sanitizedKey.startsWith('AIzaSy')) {
-        const directRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(sanitizedKey)}`, {
+        const directRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(sanitizedKey)}`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
